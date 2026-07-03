@@ -61,12 +61,24 @@ class YSTPAddonsAutoDetect implements YSTPAddonsModuleInterface {
             // 語言名稱用目標語言的原生自稱（訪客看得懂的）
             $name = YSTPAddonsTP::language_native_name( $suggested );
 
-            // 提示框架文字依「建議的目標語言」採母語文案
+            // 提示框架文字依「建議的目標語言」採內建母語文案
             $strings = self::prompt_strings_for( $suggested );
+            $title   = sprintf( $strings['title'], $name );
+            $accept  = sprintf( $strings['accept'], $name );
 
-            // 後台自訂文案優先（會套用到所有語言）
-            $custom_title  = (string) YSTPAddonsSettingsRepo::get( 'detect_msg_title', '' );
-            $custom_accept = (string) YSTPAddonsSettingsRepo::get( 'detect_msg_accept', '' );
+            // 手動模式：改用後台針對「該目標語言」自訂的文案（留空則回退內建母語文案）。
+            // 文字含 %s 時，%s 會替換為語言名稱。
+            if ( (int) YSTPAddonsSettingsRepo::get( 'detect_msg_custom', 0 ) ) {
+                $slug = strtolower( $suggested );
+                $ct   = trim( (string) YSTPAddonsSettingsRepo::get( 'detect_msg_title_' . $slug, '' ) );
+                $ca   = trim( (string) YSTPAddonsSettingsRepo::get( 'detect_msg_accept_' . $slug, '' ) );
+                if ( '' !== $ct ) {
+                    $title = ( false !== strpos( $ct, '%s' ) ) ? sprintf( $ct, $name ) : $ct;
+                }
+                if ( '' !== $ca ) {
+                    $accept = ( false !== strpos( $ca, '%s' ) ) ? sprintf( $ca, $name ) : $ca;
+                }
+            }
 
             $payload['suggested'] = [
                 'code' => $suggested,
@@ -75,8 +87,8 @@ class YSTPAddonsAutoDetect implements YSTPAddonsModuleInterface {
                 'url'  => YSTPAddonsTP::url_for_language( $suggested, YSTPAddonsTP::current_url() ),
             ];
             $payload['i18n'] = [
-                'title'   => '' !== $custom_title ? $custom_title : sprintf( $strings['title'], $name ),
-                'accept'  => '' !== $custom_accept ? $custom_accept : sprintf( $strings['accept'], $name ),
+                'title'   => $title,
+                'accept'  => $accept,
                 'dismiss' => $strings['dismiss'],
             ];
         }
@@ -88,11 +100,11 @@ class YSTPAddonsAutoDetect implements YSTPAddonsModuleInterface {
      * 依目標語言取得提示文案（母語）。%s 為語言名稱。
      *
      * 訪客看到的提示應以「建議切換的目標語言」書寫，例如日文訪客看到日文提示。
-     * 未內建的語言回退英文。
+     * 未內建的語言回退英文。後台設定頁亦用此表產生各語言的預設 placeholder。
      *
      * @return array{title:string, accept:string, dismiss:string}
      */
-    private static function prompt_strings_for( string $locale ): array {
+    public static function prompt_strings_for( string $locale ): array {
         $table = [
             'en'    => [ 'Browse this site in %s?', 'Switch to %s', 'Keep current language' ],
             'zh'    => [ '要以「%s」瀏覽本網站嗎？', '切換到 %s', '維持目前語言' ],

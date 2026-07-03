@@ -38,14 +38,16 @@
             if ( res && res.success ) {
                 $cb.closest( '.ystp-card' ).toggleClass( 'is-on', !! enabled );
                 toast( res.data.message );
+                // 選單顯示與否跟隨模組啟用狀態 → 重新整理讓側邊選單即時反映
+                setTimeout( function () { window.location.reload(); }, 550 );
             } else {
                 $cb.prop( 'checked', ! enabled );
                 toast( ( res && res.data && res.data.message ) || cfg.i18n.error, true );
+                $cb.prop( 'disabled', false );
             }
         } ).fail( function () {
             $cb.prop( 'checked', ! enabled );
             toast( cfg.i18n.error, true );
-        } ).always( function () {
             $cb.prop( 'disabled', false );
         } );
     } );
@@ -79,6 +81,66 @@
             settings: settings
         } ).done( function ( res ) {
             if ( res && res.success ) {
+                toast( res.data.message || cfg.i18n.saved );
+            } else {
+                toast( ( res && res.data && res.data.message ) || cfg.i18n.error, true );
+            }
+        } ).fail( function () {
+            toast( cfg.i18n.error, true );
+        } ).always( function () {
+            $btn.prop( 'disabled', false ).html( oldHtml );
+        } );
+    } );
+
+    /* ───────────── 語言自動偵測頁 ───────────── */
+
+    // 自訂提示文字：開關切換 → 顯示／隱藏各語言欄位區塊
+    $( document ).on( 'change', '.ystp-detect-custom-toggle', function () {
+        $( '.ystp-detect-manual' ).toggle( $( this ).is( ':checked' ) );
+    } );
+
+    // 一鍵 AI 翻譯：讀來源語言文字 → 翻譯到其他語言 → 填入欄位（待使用者確認後儲存）
+    $( document ).on( 'click', '.ystp-detect-ai-translate', function () {
+        var $btn = $( this );
+        var src  = String( $btn.data( 'source' ) || '' );
+        var slug = src.toLowerCase();
+        var title  = $.trim( $( '[data-setting="detect_msg_title_' + slug + '"]' ).val() || '' );
+        var accept = $.trim( $( '[data-setting="detect_msg_accept_' + slug + '"]' ).val() || '' );
+
+        if ( ! title && ! accept ) {
+            toast( '請先填寫「主要來源語言」的提示文字', true );
+            return;
+        }
+
+        var targets = [];
+        $( '.ystp-detect-lang' ).each( function () {
+            var code = String( $( this ).data( 'code' ) || '' );
+            if ( code && code !== src ) { targets.push( code ); }
+        } );
+        if ( ! targets.length ) { toast( '沒有其他語言可翻譯', true ); return; }
+
+        $btn.prop( 'disabled', true );
+        var oldHtml = $btn.html();
+        $btn.html( '<span class="dashicons dashicons-update"></span> ' + cfg.i18n.saving );
+
+        $.post( cfg.ajax_url, {
+            action:  'ys_tp_ai_translate_strings',
+            nonce:   cfg.nonce,
+            source:  src,
+            title:   title,
+            accept:  accept,
+            targets: targets
+        } ).done( function ( res ) {
+            if ( res && res.success && res.data && res.data.translations ) {
+                $.each( res.data.translations, function ( code, v ) {
+                    var s = String( code ).toLowerCase();
+                    if ( v && typeof v.title !== 'undefined' ) {
+                        $( '[data-setting="detect_msg_title_' + s + '"]' ).val( v.title );
+                    }
+                    if ( v && typeof v.accept !== 'undefined' ) {
+                        $( '[data-setting="detect_msg_accept_' + s + '"]' ).val( v.accept );
+                    }
+                } );
                 toast( res.data.message || cfg.i18n.saved );
             } else {
                 toast( ( res && res.data && res.data.message ) || cfg.i18n.error, true );

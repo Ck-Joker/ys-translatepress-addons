@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: YS TranslatePress Addons 0.11.0\n"
+"Project-Id-Version: YS TranslatePress Addons 0.12.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ys-translatepress-addons\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-02T12:12:45+00:00\n"
+"POT-Creation-Date: 2026-07-03T04:18:10+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ys-translatepress-addons\n"
@@ -35,47 +35,47 @@ msgstr ""
 msgid "YANGSHEEP DESIGN"
 msgstr ""
 
-#: src/Admin/YSTPAddonsAdmin.php:32
 #: src/Admin/YSTPAddonsAdmin.php:33
+#: src/Admin/YSTPAddonsAdmin.php:34
 msgid "多語增強"
 msgstr ""
 
-#: src/Admin/YSTPAddonsAdmin.php:43
 #: src/Admin/YSTPAddonsAdmin.php:44
+#: src/Admin/YSTPAddonsAdmin.php:45
 msgid "總覽"
 msgstr ""
 
-#: src/Admin/YSTPAddonsAdmin.php:97
+#: src/Admin/YSTPAddonsAdmin.php:124
 msgid "儲存中…"
 msgstr ""
 
-#: src/Admin/YSTPAddonsAdmin.php:98
+#: src/Admin/YSTPAddonsAdmin.php:125
 #: src/Admin/YSTPAddonsAjaxHandler.php:93
 msgid "已儲存"
 msgstr ""
 
-#: src/Admin/YSTPAddonsAdmin.php:99
+#: src/Admin/YSTPAddonsAdmin.php:126
 msgid "操作失敗，請重試"
 msgstr ""
 
-#: src/Admin/YSTPAddonsAdmin.php:120
-#: src/Admin/YSTPAddonsAdmin.php:135
+#: src/Admin/YSTPAddonsAdmin.php:147
+#: src/Admin/YSTPAddonsAdmin.php:162
 msgid "你沒有足夠的權限。"
 msgstr ""
 
-#: src/Admin/YSTPAddonsAdmin.php:149
+#: src/Admin/YSTPAddonsAdmin.php:176
 msgid "此模組設定頁尚未提供。"
 msgstr ""
 
 #: src/Admin/YSTPAddonsAjaxHandler.php:34
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:40
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:41
 #: src/Modules/ImportExport/YSTPAddonsImportExport.php:33
 #: src/Modules/ImportExport/YSTPAddonsImportExport.php:102
 msgid "安全驗證失敗"
 msgstr ""
 
 #: src/Admin/YSTPAddonsAjaxHandler.php:37
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:43
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:44
 #: src/Modules/ImportExport/YSTPAddonsImportExport.php:105
 msgid "權限不足"
 msgstr ""
@@ -97,12 +97,12 @@ msgid "模組已停用"
 msgstr ""
 
 #. translators: %s: 沿用結果摘要
-#: src/Admin/YSTPAddonsAjaxHandler.php:142
+#: src/Admin/YSTPAddonsAjaxHandler.php:143
 #, php-format
 msgid "已沿用既有設定：%s"
 msgstr ""
 
-#: src/Admin/YSTPAddonsAjaxHandler.php:145
+#: src/Admin/YSTPAddonsAjaxHandler.php:146
 msgid "未偵測到可沿用的既有翻譯網址 slug 或選單語言設定。"
 msgstr ""
 
@@ -126,43 +126,56 @@ msgstr ""
 msgid "測試模擬"
 msgstr ""
 
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:58
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:59
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:94
 msgid "找不到供應商設定"
 msgstr ""
 
 #. translators: %s: 供應商名稱
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:66
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:67
 #, php-format
 msgid "%s 連線成功！"
 msgstr ""
 
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:107
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:89
+msgid "缺少翻譯來源文字或目標語言"
+msgstr ""
+
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:117
+msgid "沒有可翻譯的目標語言"
+msgstr ""
+
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:122
+msgid "已自動翻譯，請確認後儲存"
+msgstr ""
+
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:162
 msgid "無效的文章"
 msgstr ""
 
 #. translators: %d: 翻譯字串數
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:117
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:172
 #, php-format
 msgid "已翻譯 %d 個字串"
 msgstr ""
 
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:155
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:210
 msgid "AI 翻譯（多語增強）"
 msgstr ""
 
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:167
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:222
 msgid "抓取本頁各語言版本並以 AI 翻譯尚未翻譯的字串。"
 msgstr ""
 
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:171
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:226
 msgid "AI 翻譯此頁"
 msgstr ""
 
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:183
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:238
 msgid "翻譯中，請稍候…"
 msgstr ""
 
-#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:194
+#: src/Modules/AiTranslate/YSTPAddonsAiTranslate.php:249
 msgid "發生錯誤"
 msgstr ""
 
@@ -190,28 +203,30 @@ msgstr ""
 msgid "切換到被隱藏的語言時，此內容會從列表移除；若直接造訪則重導至設定的對應頁。"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:190
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:191
 msgid "全部語言"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:191
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:192
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:198
 msgid "顯示於"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:200
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:201
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:207
 msgid "隱藏於"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:262
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:267
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:263
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:268
 msgid "語言"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:288
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:289
 msgid "不顯示"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:289
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:290
 msgid "顯示"
 msgstr ""
 
@@ -333,6 +348,7 @@ msgid "頁面／文章／自訂內容可排除或指定語言顯示，切換語�
 msgstr ""
 
 #: src/Support/YSTPAddonsModules.php:81
+#: templates/admin/auto_detect.php:149
 msgid "AI 翻譯"
 msgstr ""
 
@@ -446,67 +462,106 @@ msgstr ""
 msgid "進階使用者可自訂翻譯風格／術語規則。可用變數：%source_lang%、%target_lang%。"
 msgstr ""
 
-#: templates/admin/auto_detect.php:67
+#: templates/admin/auto_detect.php:101
 msgid "提示行為"
 msgstr ""
 
-#: templates/admin/auto_detect.php:69
+#: templates/admin/auto_detect.php:103
 msgid "詢問訪客（顯示提示，由訪客決定）"
 msgstr ""
 
-#: templates/admin/auto_detect.php:70
+#: templates/admin/auto_detect.php:104
 msgid "自動切換（首次到訪直接切換）"
 msgstr ""
 
-#: templates/admin/auto_detect.php:72
+#: templates/admin/auto_detect.php:106
 msgid "建議使用「詢問訪客」，較友善且不影響 SEO。"
 msgstr ""
 
-#: templates/admin/auto_detect.php:75
+#: templates/admin/auto_detect.php:109
 msgid "提示樣式"
 msgstr ""
 
-#: templates/admin/auto_detect.php:77
+#: templates/admin/auto_detect.php:111
 msgid "角落提示卡"
 msgstr ""
 
-#: templates/admin/auto_detect.php:78
+#: templates/admin/auto_detect.php:112
 msgid "頂部橫幅"
 msgstr ""
 
-#: templates/admin/auto_detect.php:82
+#: templates/admin/auto_detect.php:116
 msgid "提示卡位置"
 msgstr ""
 
-#: templates/admin/auto_detect.php:84
+#: templates/admin/auto_detect.php:118
 msgid "右下"
 msgstr ""
 
-#: templates/admin/auto_detect.php:85
+#: templates/admin/auto_detect.php:119
 msgid "左下"
 msgstr ""
 
-#: templates/admin/auto_detect.php:89
-msgid "提示標題（留空使用預設）"
+#: templates/admin/auto_detect.php:124
+msgid "自訂提示文字"
 msgstr ""
 
-#: templates/admin/auto_detect.php:93
-msgid "切換按鈕文字（留空使用預設）"
+#: templates/admin/auto_detect.php:129
+msgid "關閉（自動）：依訪客的瀏覽器語言，自動以「該語言」的內建母語文案顯示提示。開啟後，可自訂每個語言的提示文字。"
 msgstr ""
 
-#: templates/admin/auto_detect.php:107
+#: templates/admin/auto_detect.php:136
+msgid "填好下方「主要來源語言」後，可一鍵 AI 翻譯到其他語言（結果會填入欄位，確認後再儲存）。"
+msgstr ""
+
+#: templates/admin/auto_detect.php:139
+msgid "AI 翻譯到其他語言"
+msgstr ""
+
+#. translators: %s: 「AI 翻譯」模組連結
+#: templates/admin/auto_detect.php:148
+#, php-format
+msgid "啟用 %s 模組後，可一鍵將主要語言的文字翻譯到其他語言。"
+msgstr ""
+
+#: templates/admin/auto_detect.php:163
+msgid "主要來源語言"
+msgstr ""
+
+#. translators: %s: 語言名稱
+#: templates/admin/auto_detect.php:167
+#, php-format
+msgid "%s 提示標題"
+msgstr ""
+
+#. translators: %s: 語言名稱
+#: templates/admin/auto_detect.php:168
+#, php-format
+msgid "%s 切換按鈕文字"
+msgstr ""
+
+#: templates/admin/auto_detect.php:173
+#, php-format
+msgid "留空的欄位會自動使用該語言的內建母語文案；文字中的 %s 會替換為語言名稱。"
+msgstr ""
+
+#: templates/admin/auto_detect.php:187
 msgid "訪客首次到訪、且瀏覽器語言與當前頁面不同時，會看到："
 msgstr ""
 
-#: templates/admin/auto_detect.php:117
+#: templates/admin/auto_detect.php:197
 msgid "維持目前語言"
 msgstr ""
 
-#: templates/admin/auto_detect.php:122
+#: templates/admin/auto_detect.php:201
+msgid "預覽以其他語言示範；實際提示會依每位訪客的瀏覽器語言，以「該語言」文案顯示。修改後請儲存並重新整理以更新預覽。"
+msgstr ""
+
+#: templates/admin/auto_detect.php:203
 msgid "需要至少兩個語言才能預覽。"
 msgstr ""
 
-#: templates/admin/auto_detect.php:124
+#: templates/admin/auto_detect.php:205
 msgid "完全由 JavaScript 驅動，搜尋引擎爬蟲不受影響，不會造成重複內容問題。"
 msgstr ""
 

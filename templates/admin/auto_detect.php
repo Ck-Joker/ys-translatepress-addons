@@ -13,28 +13,62 @@ defined( 'ABSPATH' ) || exit;
 
 use YangSheep\TPAddons\Database\YSTPAddonsSettingsRepo;
 use YangSheep\TPAddons\Support\YSTPAddonsTP;
+use YangSheep\TPAddons\Support\YSTPAddonsModules;
+use YangSheep\TPAddons\Modules\AutoDetect\YSTPAddonsAutoDetect;
 
-$behavior = (string) YSTPAddonsSettingsRepo::get( 'detect_behavior', 'prompt' );
-$style    = (string) YSTPAddonsSettingsRepo::get( 'detect_style', 'card' );
-$position = (string) YSTPAddonsSettingsRepo::get( 'detect_position', 'bottom-right' );
-$msg_t    = (string) YSTPAddonsSettingsRepo::get( 'detect_msg_title', '' );
-$msg_a    = (string) YSTPAddonsSettingsRepo::get( 'detect_msg_accept', '' );
+$behavior  = (string) YSTPAddonsSettingsRepo::get( 'detect_behavior', 'prompt' );
+$style     = (string) YSTPAddonsSettingsRepo::get( 'detect_style', 'card' );
+$position  = (string) YSTPAddonsSettingsRepo::get( 'detect_position', 'bottom-right' );
+$custom_on = (int) YSTPAddonsSettingsRepo::get( 'detect_msg_custom', 0 );
+$ai_on     = YSTPAddonsModules::is_enabled( 'ai_translate' );
 
-// 預覽用：取一個「非當前語言」的語言當示範
-$langs   = YSTPAddonsTP::languages();
-$current = YSTPAddonsTP::default_language();
-$demo_code = '';
-$demo_name = '';
-foreach ( $langs as $code => $name ) {
-    if ( $code !== $current ) {
-        $demo_code = $code;
-        $demo_name = $name;
+// 已發佈語言：預設（主要）語言排最前，作為 AI 翻譯來源
+$pub_codes = YSTPAddonsTP::published_language_codes();
+$def_code  = YSTPAddonsTP::default_language();
+$ordered   = array_merge( [ $def_code ], array_values( array_diff( $pub_codes, [ $def_code ] ) ) );
+
+// 逐語言組裝：內建母語文案（placeholder／預覽）與後台已存自訂值
+$lang_rows = [];
+foreach ( $ordered as $code ) {
+    $code = (string) $code;
+    if ( '' === $code ) {
+        continue;
+    }
+    $nat     = YSTPAddonsTP::language_native_name( $code );
+    $strings = YSTPAddonsAutoDetect::prompt_strings_for( $code );
+    $slug    = strtolower( $code );
+    $lang_rows[] = [
+        'code'       => $code,
+        'slug'       => $slug,
+        'name'       => $nat,
+        'flag'       => YSTPAddonsTP::flag_url( $code ),
+        'is_source'  => ( $code === $def_code ),
+        'ph_title'   => sprintf( $strings['title'], $nat ),
+        'ph_accept'  => sprintf( $strings['accept'], $nat ),
+        'val_title'  => (string) YSTPAddonsSettingsRepo::get( 'detect_msg_title_' . $slug, '' ),
+        'val_accept' => (string) YSTPAddonsSettingsRepo::get( 'detect_msg_accept_' . $slug, '' ),
+    ];
+}
+
+// 預覽：取一個「非主要」語言示範；反映目前模式（手動且有填 → 用填的，否則內建母語）
+$demo = null;
+foreach ( $lang_rows as $r ) {
+    if ( ! $r['is_source'] ) {
+        $demo = $r;
         break;
     }
 }
-$demo_flag  = $demo_code ? YSTPAddonsTP::flag_url( $demo_code ) : '';
-$demo_title = $msg_t !== '' ? $msg_t : sprintf( '要以「%s」瀏覽本網站嗎？', $demo_name );
-$demo_accept = $msg_a !== '' ? $msg_a : sprintf( '切換到 %s', $demo_name );
+if ( ! $demo && ! empty( $lang_rows ) ) {
+    $demo = $lang_rows[0];
+}
+$demo_flag = $demo_title = $demo_accept = '';
+if ( $demo ) {
+    $demo_flag = $demo['flag'];
+    $dt = ( $custom_on && '' !== trim( $demo['val_title'] ) ) ? $demo['val_title'] : $demo['ph_title'];
+    $da = ( $custom_on && '' !== trim( $demo['val_accept'] ) ) ? $demo['val_accept'] : $demo['ph_accept'];
+    $demo_title  = ( false !== strpos( $dt, '%s' ) ) ? sprintf( $dt, $demo['name'] ) : $dt;
+    $demo_accept = ( false !== strpos( $da, '%s' ) ) ? sprintf( $da, $demo['name'] ) : $da;
+}
 ?>
 <div class="wrap ystp-wrap">
     <h1 class="ystp-screen-reader">語言自動偵測</h1>
@@ -85,14 +119,60 @@ $demo_accept = $msg_a !== '' ? $msg_a : sprintf( '切換到 %s', $demo_name );
                         <option value="bottom-left" <?php selected( $position, 'bottom-left' ); ?>><?php esc_html_e( '左下', 'ys-translatepress-addons' ); ?></option>
                     </select>
                 </div>
-                <div class="ystp-field">
-                    <label><?php esc_html_e( '提示標題（留空使用預設）', 'ys-translatepress-addons' ); ?></label>
-                    <input type="text" data-setting="detect_msg_title" value="<?php echo esc_attr( $msg_t ); ?>" placeholder="要以「中文」瀏覽本網站嗎？" style="max-width:100%;" />
+
+                <div class="ystp-field ystp-field-wide">
+                    <label><?php esc_html_e( '自訂提示文字', 'ys-translatepress-addons' ); ?></label>
+                    <label class="ystp-toggle" style="margin-top:4px;">
+                        <input type="checkbox" class="ystp-detect-custom-toggle" data-setting="detect_msg_custom" <?php checked( $custom_on, 1 ); ?> />
+                        <span class="ystp-slider"></span>
+                    </label>
+                    <p class="ystp-field-desc"><?php esc_html_e( '關閉（自動）：依訪客的瀏覽器語言，自動以「該語言」的內建母語文案顯示提示。開啟後，可自訂每個語言的提示文字。', 'ys-translatepress-addons' ); ?></p>
                 </div>
-                <div class="ystp-field">
-                    <label><?php esc_html_e( '切換按鈕文字（留空使用預設）', 'ys-translatepress-addons' ); ?></label>
-                    <input type="text" data-setting="detect_msg_accept" value="<?php echo esc_attr( $msg_a ); ?>" placeholder="切換到 中文" style="max-width:280px;" />
+
+                <div class="ystp-detect-manual" style="<?php echo $custom_on ? '' : 'display:none;'; ?>">
+                    <?php if ( $ai_on ) : ?>
+                        <div class="ystp-detect-ai-bar">
+                            <span class="ystp-field-desc" style="margin:0;flex:1;">
+                                <?php esc_html_e( '填好下方「主要來源語言」後，可一鍵 AI 翻譯到其他語言（結果會填入欄位，確認後再儲存）。', 'ys-translatepress-addons' ); ?>
+                            </span>
+                            <button type="button" class="ystp-btn ystp-detect-ai-translate" data-source="<?php echo esc_attr( $def_code ); ?>">
+                                <span class="dashicons dashicons-superhero"></span> <?php esc_html_e( 'AI 翻譯到其他語言', 'ys-translatepress-addons' ); ?>
+                            </button>
+                        </div>
+                    <?php else : ?>
+                        <p class="ystp-field-desc ystp-detect-ai-hint">
+                            <span class="dashicons dashicons-info-outline"></span>
+                            <?php
+                            printf(
+                                /* translators: %s: 「AI 翻譯」模組連結 */
+                                esc_html__( '啟用 %s 模組後，可一鍵將主要語言的文字翻譯到其他語言。', 'ys-translatepress-addons' ),
+                                '<a href="' . esc_url( admin_url( 'admin.php?page=ys-tp-ai' ) ) . '">' . esc_html__( 'AI 翻譯', 'ys-translatepress-addons' ) . '</a>'
+                            );
+                            ?>
+                        </p>
+                    <?php endif; ?>
+
+                    <?php foreach ( $lang_rows as $r ) : ?>
+                        <div class="ystp-detect-lang<?php echo $r['is_source'] ? ' is-source' : ''; ?>" data-lang="<?php echo esc_attr( $r['slug'] ); ?>" data-code="<?php echo esc_attr( $r['code'] ); ?>">
+                            <div class="ystp-detect-lang-head">
+                                <?php if ( $r['flag'] ) : ?>
+                                    <img class="ystp-detect-lang-flag" src="<?php echo esc_url( $r['flag'] ); ?>" alt="" width="22" height="15" />
+                                <?php endif; ?>
+                                <span class="ystp-detect-lang-name"><?php echo esc_html( $r['name'] ); ?></span>
+                                <?php if ( $r['is_source'] ) : ?>
+                                    <span class="ystp-detect-lang-badge"><?php esc_html_e( '主要來源語言', 'ys-translatepress-addons' ); ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="ystp-detect-lang-fields">
+                                <input type="text" data-setting="detect_msg_title_<?php echo esc_attr( $r['slug'] ); ?>" value="<?php echo esc_attr( $r['val_title'] ); ?>" placeholder="<?php echo esc_attr( $r['ph_title'] ); ?>" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: 語言名稱 */ __( '%s 提示標題', 'ys-translatepress-addons' ), $r['name'] ) ); ?>" />
+                                <input type="text" data-setting="detect_msg_accept_<?php echo esc_attr( $r['slug'] ); ?>" value="<?php echo esc_attr( $r['val_accept'] ); ?>" placeholder="<?php echo esc_attr( $r['ph_accept'] ); ?>" aria-label="<?php echo esc_attr( sprintf( /* translators: %s: 語言名稱 */ __( '%s 切換按鈕文字', 'ys-translatepress-addons' ), $r['name'] ) ); ?>" />
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+
+                    <p class="ystp-field-desc"><?php esc_html_e( '留空的欄位會自動使用該語言的內建母語文案；文字中的 %s 會替換為語言名稱。', 'ys-translatepress-addons' ); ?></p>
                 </div>
+
                 <div class="ystp-form-foot">
                     <button type="button" class="ystp-btn ystp-btn-primary ystp-save-btn" data-form="detect">
                         <span class="dashicons dashicons-saved"></span> 儲存設定
@@ -105,7 +185,7 @@ $demo_accept = $msg_a !== '' ? $msg_a : sprintf( '切換到 %s', $demo_name );
             <div class="ystp-panel-head"><span class="dashicons dashicons-visibility"></span> 提示卡預覽</div>
             <div class="ystp-panel-body">
                 <p class="ystp-muted" style="margin-bottom:16px;"><?php esc_html_e( '訪客首次到訪、且瀏覽器語言與當前頁面不同時，會看到：', 'ys-translatepress-addons' ); ?></p>
-                <?php if ( $demo_code ) : ?>
+                <?php if ( $demo ) : ?>
                 <div style="background:#eef2f5;border-radius:12px;padding:30px;display:flex;justify-content:center;">
                     <div class="ystp-ald ystp-ald--card is-in" style="position:static;transform:none;">
                         <div class="ystp-ald-card-head">
@@ -118,6 +198,7 @@ $demo_accept = $msg_a !== '' ? $msg_a : sprintf( '切換到 %s', $demo_name );
                         </div>
                     </div>
                 </div>
+                <p class="ystp-field-desc" style="margin-top:12px;"><?php esc_html_e( '預覽以其他語言示範；實際提示會依每位訪客的瀏覽器語言，以「該語言」文案顯示。修改後請儲存並重新整理以更新預覽。', 'ys-translatepress-addons' ); ?></p>
                 <?php else : ?>
                     <p class="ystp-muted"><?php esc_html_e( '需要至少兩個語言才能預覽。', 'ys-translatepress-addons' ); ?></p>
                 <?php endif; ?>

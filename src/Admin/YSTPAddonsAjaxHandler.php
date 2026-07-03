@@ -121,6 +121,7 @@ class YSTPAddonsAjaxHandler {
                 : __( '模組已停用', 'ys-translatepress-addons' ),
             'module'  => $module,
             'enabled' => $enabled,
+            'page'    => (string) ( $meta['page'] ?? '' ),
         ] );
     }
 

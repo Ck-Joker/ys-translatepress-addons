@@ -30,6 +30,7 @@ class YSTPAddonsAiTranslate implements YSTPAddonsModuleInterface {
             add_action( 'wp_ajax_ys_tp_ai_run_step', [ $this, 'ajax_run_step' ] );
             add_action( 'wp_ajax_ys_tp_ai_progress', [ $this, 'ajax_progress' ] );
             add_action( 'wp_ajax_ys_tp_ai_translate_post', [ $this, 'ajax_translate_post' ] );
+            add_action( 'wp_ajax_ys_tp_ai_translate_strings', [ $this, 'ajax_translate_strings' ] );
             add_action( 'save_post', [ $this, 'on_save_post' ], 20, 2 );
             add_action( 'add_meta_boxes', [ $this, 'add_meta_box' ] );
         }
@@ -66,6 +67,60 @@ class YSTPAddonsAiTranslate implements YSTPAddonsModuleInterface {
             __( '%s 連線成功！', 'ys-translatepress-addons' ),
             $provider->label()
         ) ] );
+    }
+
+    /**
+     * 將一組提示字串從來源語言翻譯到多個目標語言
+     *
+     * 供「語言自動偵測」手動模式的一鍵翻譯使用；每個目標語言各呼叫一次供應商。
+     * 回傳 translations[目標語言碼] = { title, accept }。
+     */
+    public function ajax_translate_strings(): void {
+        $this->guard();
+
+        $source  = isset( $_POST['source'] ) ? sanitize_text_field( wp_unslash( $_POST['source'] ) ) : '';
+        $title   = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+        $accept  = isset( $_POST['accept'] ) ? sanitize_text_field( wp_unslash( $_POST['accept'] ) ) : '';
+        $targets = ( isset( $_POST['targets'] ) && is_array( $_POST['targets'] ) )
+            ? array_map( 'sanitize_text_field', wp_unslash( $_POST['targets'] ) )
+            : [];
+
+        if ( '' === $source || empty( $targets ) || ( '' === $title && '' === $accept ) ) {
+            wp_send_json_error( [ 'message' => __( '缺少翻譯來源文字或目標語言', 'ys-translatepress-addons' ) ] );
+        }
+
+        $provider = YSTPAddonsProviderFactory::from_settings();
+        if ( ! $provider ) {
+            wp_send_json_error( [ 'message' => __( '找不到供應商設定', 'ys-translatepress-addons' ) ] );
+        }
+
+        // 保持順序：[0]=標題、[1]=按鈕文字
+        $texts = [ $title, $accept ];
+        $out   = [];
+
+        foreach ( $targets as $code ) {
+            $code = trim( $code );
+            if ( '' === $code || $code === $source ) {
+                continue;
+            }
+            $res = $provider->translate_batch( $texts, $code, $source );
+            if ( is_wp_error( $res ) ) {
+                wp_send_json_error( [ 'message' => $res->get_error_message() ] );
+            }
+            $out[ $code ] = [
+                'title'  => isset( $res[0] ) ? (string) $res[0] : $title,
+                'accept' => isset( $res[1] ) ? (string) $res[1] : $accept,
+            ];
+        }
+
+        if ( empty( $out ) ) {
+            wp_send_json_error( [ 'message' => __( '沒有可翻譯的目標語言', 'ys-translatepress-addons' ) ] );
+        }
+
+        wp_send_json_success( [
+            'translations' => $out,
+            'message'      => __( '已自動翻譯，請確認後儲存', 'ys-translatepress-addons' ),
+        ] );
     }
 
     /** 手動全站：執行一個批次步驟（前端輪詢直到完成） */

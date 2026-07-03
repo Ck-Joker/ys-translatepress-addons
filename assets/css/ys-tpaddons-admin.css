@@ -221,6 +221,36 @@
 .ystp-field-desc { font-size: 12.5px; color: var(--ystp-muted); margin: 6px 0 0; }
 .ystp-form-foot { margin-top: 8px; }
 
+/* ── 語言自動偵測：各語言自訂提示文字 ──── */
+.ystp-field-wide { max-width: 100%; }
+.ystp-detect-manual { margin: 2px 0 20px; }
+.ystp-detect-ai-bar {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--ystp-accent-l); border: 1px solid #ecd7e6; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 14px;
+}
+.ystp-detect-ai-bar .ystp-btn { flex-shrink: 0; }
+.ystp-detect-ai-hint { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; }
+.ystp-detect-ai-hint .dashicons { color: var(--ystp-accent-d); }
+.ystp-detect-lang {
+    border: 1px solid var(--ystp-border); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 12px; background: #fff;
+}
+.ystp-detect-lang.is-source { border-color: var(--ystp-accent); background: var(--ystp-accent-l); }
+.ystp-detect-lang-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.ystp-detect-lang-flag { border-radius: 3px; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+.ystp-detect-lang-name { font-weight: 600; color: var(--ystp-navy); font-size: 14px; }
+.ystp-detect-lang-badge {
+    font-size: 11px; font-weight: 600; color: var(--ystp-accent-d);
+    background: #fff; border: 1px solid #e5c7dd; border-radius: 20px; padding: 2px 10px;
+}
+.ystp-detect-lang-fields { display: flex; flex-direction: column; gap: 8px; }
+.ystp-detect-lang-fields input[type="text"] {
+    width: 100%; padding: 8px 12px;
+    border: 1px solid var(--ystp-border); border-radius: 8px; font-size: 14px;
+}
+.ystp-detect-lang-fields input:focus { border-color: var(--ystp-accent); outline: none; box-shadow: 0 0 0 3px rgba(204,153,194,.22); }
+
 /* ── Toast ──────────────────────────── */
 .ystp-toast {
     position: fixed; right: 28px; bottom: 28px; z-index: 99999;

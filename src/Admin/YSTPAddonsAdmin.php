@@ -2,7 +2,7 @@
 /**
  * 後台管理 — 選單框架
  *
- * 主選單「多語增強」+ 依模組註冊表動態產生子選單（僅顯示已實作模組）。
+ * 主選單「多語增強」+ 依模組註冊表動態產生子選單（已停用模組的選單項目以 CSS 隱藏，頁面仍可存取）。
  *
  * @package YangSheep\TPAddons\Admin
  * @since   0.1.0
@@ -22,6 +22,7 @@ class YSTPAddonsAdmin {
     public function __construct() {
         add_action( 'admin_menu', [ $this, 'register_menu' ], 20 );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+        add_action( 'admin_head', [ $this, 'hide_disabled_menu_items' ] );
     }
 
     /**
@@ -47,7 +48,10 @@ class YSTPAddonsAdmin {
             [ $this, 'render_overview' ]
         );
 
-        // 依模組註冊表動態加入子選單（僅顯示已實作 class 的模組）
+        // 依模組註冊表動態加入子選單。頁面全部註冊以保持「可存取」，讓停用的模組
+        // 仍可由總覽「前往設定」進入並顯示「模組已停用」提示（方便預先設定）。
+        // 停用模組的「選單項目」改由 hide_disabled_menu_items() 以 CSS 隱藏，
+        // 使側邊選單與模組啟用狀態一致——不用 remove_submenu_page（會連帶讓頁面無法存取）。
         foreach ( YSTPAddonsModules::all() as $key => $meta ) {
             if ( empty( $meta['class'] ) ) {
                 continue;
@@ -63,6 +67,29 @@ class YSTPAddonsAdmin {
                 }
             );
         }
+    }
+
+    /**
+     * 以 CSS 隱藏「已停用模組」的後台子選單項目
+     *
+     * 頁面本身仍註冊可存取（總覽「前往設定」可進入並顯示停用提示），此處僅隱藏
+     * 選單項目，讓側邊選單與模組啟用狀態一致。選單顯示於所有後台頁，故掛 admin_head。
+     * 頁面 slug 來自本外掛內建註冊表（非使用者輸入），僅含英數與連字號。
+     */
+    public function hide_disabled_menu_items(): void {
+        $selectors = [];
+        foreach ( YSTPAddonsModules::all() as $key => $meta ) {
+            if ( empty( $meta['class'] ) || YSTPAddonsModules::is_enabled( $key ) ) {
+                continue;
+            }
+            $page       = esc_attr( (string) $meta['page'] );
+            $selectors[] = '#adminmenu li:has(> a[href$="page=' . $page . '"])';
+            $selectors[] = '#adminmenu a[href$="page=' . $page . '"]';
+        }
+        if ( empty( $selectors ) ) {
+            return;
+        }
+        echo '<style id="ys-tp-hide-menu">' . implode( ',', $selectors ) . '{display:none!important;}</style>' . "\n";
     }
 
     /**
