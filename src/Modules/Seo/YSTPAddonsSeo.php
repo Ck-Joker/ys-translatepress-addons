@@ -46,6 +46,10 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
             // sitemap alternate（外掛存在才掛）
             add_filter( 'wpseo_sitemap_url', [ $this, 'yoast_sitemap_alternates' ], 10, 2 );
             add_filter( 'rank_math/sitemap/url', [ $this, 'rankmath_sitemap_alternates' ], 10, 2 );
+
+            // RankMath 的 <urlset> 預設未宣告 xhtml 命名空間；補上，否則注入的
+            // <xhtml:link> 會讓整個子 sitemap XML 無效（unbound prefix）。init 後類型才註冊完。
+            add_action( 'init', [ $this, 'register_rankmath_sitemap_ns' ], 20 );
         }
     }
 
@@ -150,6 +154,41 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
     }
 
     /**
+     * 為所有 RankMath sitemap 的 <urlset> 補上 xhtml 命名空間宣告
+     *
+     * 逐「sitemap 類型」掛 rank_math/sitemap/{type}_urlset（涵蓋各 public 內容類型、
+     * 分類法與作者）。RankMath 未偵測到多語外掛時不會宣告 xhtml 前綴，故需補。
+     */
+    public function register_rankmath_sitemap_ns(): void {
+        $types = array_merge(
+            array_values( get_post_types( [ 'public' => true ], 'names' ) ),
+            array_values( get_taxonomies( [ 'public' => true ], 'names' ) ),
+            [ 'author' ]
+        );
+        foreach ( array_unique( $types ) as $type ) {
+            add_filter( "rank_math/sitemap/{$type}_urlset", [ $this, 'add_xhtml_namespace' ] );
+        }
+    }
+
+    /**
+     * 在 <urlset> 開頭插入 xhtml 命名空間（已宣告則原樣返回）
+     *
+     * @param string $urlset urlset 開頭 XML
+     * @return string
+     */
+    public function add_xhtml_namespace( $urlset ) {
+        if ( ! is_string( $urlset ) || false !== strpos( $urlset, 'xmlns:xhtml' ) ) {
+            return $urlset;
+        }
+        return preg_replace(
+            '/<urlset\b/',
+            '<urlset xmlns:xhtml="http://www.w3.org/1999/xhtml"',
+            $urlset,
+            1
+        );
+    }
+
+    /**
      * 在單一 <url> 區塊內插入各語言 xhtml:link alternate
      *
      * 被「內容語言規則」排除該語言的內容，不輸出該語言的 alternate
@@ -159,7 +198,7 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
         if ( '' === $output || '' === $loc ) {
             return $output;
         }
-        $post_id = url_to_postid( $loc );
+        $post_id = self::resolve_post_id( $loc );
         $links   = '';
         foreach ( YSTPAddonsTP::published_language_codes() as $code ) {
             if ( $post_id && self::is_hidden_in_language( $post_id, $code ) ) {
@@ -174,6 +213,31 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
         }
         // 在 </url> 前插入
         return str_replace( '</url>', $links . "\t</url>", $output );
+    }
+
+    /**
+     * 將 sitemap URL 解析為 post ID
+     *
+     * url_to_postid 無法解析「文章頁面」(page_for_posts) 與靜態首頁 (page_on_front)，
+     * 此處補上，讓這些頁面被內容規則隱藏某語言時，sitemap 也正確略過該語言 alternate。
+     */
+    private static function resolve_post_id( string $loc ): int {
+        $id = url_to_postid( $loc );
+        if ( $id ) {
+            return $id;
+        }
+        $norm = untrailingslashit( $loc );
+        foreach ( [ 'page_for_posts', 'page_on_front' ] as $opt ) {
+            $pid = (int) get_option( $opt );
+            if ( ! $pid ) {
+                continue;
+            }
+            $url = get_permalink( $pid );
+            if ( $url && untrailingslashit( $url ) === $norm ) {
+                return $pid;
+            }
+        }
+        return 0;
     }
 
     /**

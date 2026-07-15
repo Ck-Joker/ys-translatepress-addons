@@ -26,6 +26,9 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
     private const CACHE_PREFIX = 'ys_tp_hidden_';
 
     public function boot(): void {
+        // 類型層級規則存於設定表，存檔後需失效隱藏清單快取（管理端與前台皆掛）
+        add_action( 'ys_tp_settings_saved', [ $this, 'on_settings_saved' ] );
+
         if ( is_admin() ) {
             add_action( 'add_meta_boxes', [ $this, 'register_meta_box' ] );
             add_action( 'save_post', [ $this, 'save_meta' ], 10, 2 );
@@ -322,15 +325,25 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
 
     /**
      * 某內容在指定語言是否被隱藏
+     *
+     * 優先序：逐篇規則（有設定時）覆寫類型層級預設；逐篇未設定則套用該類型的類型層級規則。
      */
     public static function is_hidden( int $post_id, string $lang ): bool {
         $mode = get_post_meta( $post_id, self::META_MODE, true );
-        if ( ! $mode || 'all' === $mode ) {
-            return false;
+        if ( $mode && 'all' !== $mode ) {
+            $list = get_post_meta( $post_id, self::META_LIST, true );
+            return self::eval_rule( (string) $mode, is_array( $list ) ? $list : [], $lang );
         }
-        $list = get_post_meta( $post_id, self::META_LIST, true );
-        $list = is_array( $list ) ? $list : [];
+        // 逐篇未設定 → 套用該內容類型的類型層級規則
+        return self::is_type_hidden( (string) get_post_type( $post_id ), $lang );
+    }
 
+    /**
+     * 判斷 exclude／include 規則在某語言是否隱藏
+     *
+     * @param string[] $list
+     */
+    private static function eval_rule( string $mode, array $list, string $lang ): bool {
         if ( 'exclude' === $mode ) {
             return in_array( $lang, $list, true );
         }
@@ -338,6 +351,20 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
             return ! in_array( $lang, $list, true );
         }
         return false;
+    }
+
+    /**
+     * 類型層級：整個內容類型是否在某語言被隱藏
+     *
+     * 後台可逐「內容類型 × 語言」勾選（設定鍵 content_pt_hide_{type}_{lang}，lang 小寫），
+     * 用於「一鍵關掉整個內容類型的多語顯示」。逐篇規則會覆寫此預設。
+     */
+    public static function is_type_hidden( string $post_type, string $lang ): bool {
+        if ( '' === $post_type ) {
+            return false;
+        }
+        $key = 'content_pt_hide_' . $post_type . '_' . strtolower( $lang );
+        return (bool) (int) YSTPAddonsSettingsRepo::get( $key, 0 );
     }
 
     /**
@@ -353,20 +380,62 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         }
 
         global $wpdb;
-        // 只取有設定規則的內容（mode = exclude / include）
-        $rows = $wpdb->get_results(
-            "SELECT post_id, meta_value FROM {$wpdb->postmeta} WHERE meta_key = '" . esc_sql( self::META_MODE ) . "'"
-        );
 
+        // (a) 逐篇規則（有 mode meta 的內容）
+        $rows   = $wpdb->get_results(
+            "SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = '" . esc_sql( self::META_MODE ) . "'"
+        );
         $hidden = [];
+        $ruled  = [];
         foreach ( (array) $rows as $row ) {
-            if ( self::is_hidden( (int) $row->post_id, $lang ) ) {
-                $hidden[] = (int) $row->post_id;
+            $pid           = (int) $row->post_id;
+            $ruled[ $pid ] = true;
+            $mode          = get_post_meta( $pid, self::META_MODE, true );
+            if ( $mode && 'all' !== $mode ) {
+                $list = get_post_meta( $pid, self::META_LIST, true );
+                if ( self::eval_rule( (string) $mode, is_array( $list ) ? $list : [], $lang ) ) {
+                    $hidden[] = $pid;
+                }
             }
         }
 
+        // (b) 類型層級：整個類型在此語言被關閉 → 該類型所有已發佈內容（無逐篇覆寫者）
+        foreach ( $this->post_types() as $pt ) {
+            if ( ! self::is_type_hidden( $pt, $lang ) ) {
+                continue;
+            }
+            $ids = get_posts( [
+                'post_type'        => $pt,
+                'post_status'      => 'publish',
+                'fields'           => 'ids',
+                'numberposts'      => -1,
+                'suppress_filters' => true,
+                'no_found_rows'    => true,
+            ] );
+            foreach ( $ids as $id ) {
+                if ( ! isset( $ruled[ (int) $id ] ) ) {
+                    $hidden[] = (int) $id;
+                }
+            }
+        }
+
+        $hidden = array_values( array_unique( array_map( 'intval', $hidden ) ) );
         set_transient( $cache_key, $hidden, DAY_IN_SECONDS );
         return $hidden;
+    }
+
+    /**
+     * 設定存檔後：類型層級規則變動時失效隱藏清單快取
+     *
+     * @param string[] $keys
+     */
+    public function on_settings_saved( $keys ): void {
+        foreach ( (array) $keys as $k ) {
+            if ( is_string( $k ) && 0 === strpos( $k, 'content_pt_hide_' ) ) {
+                $this->flush_cache();
+                return;
+            }
+        }
     }
 
     /**
@@ -427,22 +496,52 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
     /* ───────────── 前台：單頁智慧重導 ───────────── */
 
     public function maybe_redirect(): void {
-        if ( ! $this->redirect_enabled() || ! is_singular() ) {
+        if ( ! $this->redirect_enabled() ) {
             return;
         }
-        $post = get_queried_object();
+        $lang = YSTPAddonsTP::current_language();
+
+        // 內容類型封存頁：整個類型在此語言被關閉 → 依該類型 fallback 重導
+        if ( is_post_type_archive() ) {
+            $pt = get_query_var( 'post_type' );
+            $pt = is_array( $pt ) ? (string) reset( $pt ) : (string) $pt;
+            if ( '' !== $pt && in_array( $pt, $this->post_types(), true ) && self::is_type_hidden( $pt, $lang ) ) {
+                $this->redirect_for( $pt, $lang, null );
+            }
+            return;
+        }
+
+        // 單頁；或「文章頁面」(page_for_posts，前台為 is_home 而非 is_singular)
+        $post = null;
+        if ( is_singular() ) {
+            $obj  = get_queried_object();
+            $post = ( $obj instanceof \WP_Post ) ? $obj : null;
+        } elseif ( is_home() && ! is_front_page() ) {
+            $pid = (int) get_option( 'page_for_posts' );
+            if ( $pid ) {
+                $post = get_post( $pid );
+            }
+        }
+
         if ( ! $post instanceof \WP_Post ) {
             return;
         }
         if ( ! in_array( $post->post_type, $this->post_types(), true ) ) {
             return;
         }
-
-        $lang = YSTPAddonsTP::current_language();
         if ( ! self::is_hidden( (int) $post->ID, $lang ) ) {
             return;
         }
 
+        $this->redirect_for( $post->post_type, $lang, $post );
+    }
+
+    /**
+     * 執行重導或 404（階梯：上層 → 類型 fallback → 全域預設）
+     *
+     * @param \WP_Post|null $post 有 post 時才嘗試「跳上層」
+     */
+    private function redirect_for( string $post_type, string $lang, ?\WP_Post $post ): void {
         $status = (string) YSTPAddonsSettingsRepo::get( 'content_redirect_status', '302' );
 
         // 404 模式：不重導，直接回 404（搜尋引擎據此移除該語言索引）
@@ -455,7 +554,7 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         $target = '';
 
         // ① 上層偵測：跳到最近一個「該語言可見」的上層（頁面／階層式 CPT）
-        if ( (int) YSTPAddonsSettingsRepo::get( 'content_fb_parent', 1 ) ) {
+        if ( $post && (int) YSTPAddonsSettingsRepo::get( 'content_fb_parent', 1 ) ) {
             $ancestor = $this->nearest_visible_ancestor( $post, $lang );
             if ( $ancestor ) {
                 $url = get_permalink( $ancestor );
@@ -465,15 +564,20 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
             }
         }
 
-        // ② 無可用上層 → 文章類型 fallback（未指定則 fallback_url 內轉用全域預設）
+        // ② 無可用上層 → 該類型 fallback（未指定則 fallback_url 內轉用全域預設）
         if ( '' === $target ) {
-            $target = $this->fallback_url( $post->post_type, $lang );
+            $target = $this->fallback_url( $post_type, $lang );
         }
 
-        if ( $target ) {
-            wp_safe_redirect( $target, $code );
-            exit;
+        if ( '' === $target ) {
+            return;
         }
+        // 迴圈防護：目標與當前網址相同時不重導
+        if ( untrailingslashit( $target ) === untrailingslashit( YSTPAddonsTP::current_url() ) ) {
+            return;
+        }
+        wp_safe_redirect( $target, $code );
+        exit;
     }
 
     /**
@@ -521,13 +625,11 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
      * 每個 post type 可設定目標，或設為「未指定」改用全域預設跳轉頁。
      */
     private function fallback_url( string $post_type, string $lang ): string {
-        if ( 'post' === $post_type ) {
-            $opt = (string) YSTPAddonsSettingsRepo::get( 'content_fb_post', 'post_archive' );
-        } elseif ( 'page' === $post_type ) {
-            $opt = (string) YSTPAddonsSettingsRepo::get( 'content_fb_page', 'home' );
-        } else {
-            $opt = (string) YSTPAddonsSettingsRepo::get( 'content_fb_default', 'home' );
-        }
+        // 每個內容類型各自的重導目標（content_fb_{type}）；沿用舊的 content_fb_post／content_fb_page
+        $default = ( 'post' === $post_type )
+            ? 'post_archive'
+            : ( ( 'page' === $post_type ) ? 'home' : 'inherit' );
+        $opt = (string) YSTPAddonsSettingsRepo::get( 'content_fb_' . $post_type, $default );
 
         // 未指定 → 全域預設跳轉頁
         if ( '' === $opt || 'inherit' === $opt ) {

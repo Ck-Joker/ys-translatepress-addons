@@ -15,6 +15,9 @@ class YSTPAddonsSettingsRepo {
     /** @var array<string, mixed> 記憶體快取 */
     private static array $cache = [];
 
+    /** 快取「查無此鍵」的哨兵值（避免未設定的鍵每次都打 DB） */
+    private const MISS = "\0ystp_miss\0";
+
     /**
      * 取得設定值
      *
@@ -24,7 +27,8 @@ class YSTPAddonsSettingsRepo {
      */
     public static function get( string $key, mixed $default = null ): mixed {
         if ( array_key_exists( $key, self::$cache ) ) {
-            return self::$cache[ $key ];
+            $cached = self::$cache[ $key ];
+            return ( self::MISS === $cached ) ? $default : $cached;
         }
 
         global $wpdb;
@@ -39,6 +43,7 @@ class YSTPAddonsSettingsRepo {
         );
 
         if ( null === $value ) {
+            self::$cache[ $key ] = self::MISS; // 快取 miss，後續同鍵不再查 DB
             return $default;
         }
 

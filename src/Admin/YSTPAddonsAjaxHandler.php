@@ -69,6 +69,7 @@ class YSTPAddonsAjaxHandler {
         // 多行欄位（保留換行）
         $multiline = [ 'ai_prompt' ];
 
+        $saved_keys = [];
         foreach ( $raw as $key => $value ) {
             $safe_key = sanitize_key( $key );
             if ( '' === $safe_key ) {
@@ -88,7 +89,15 @@ class YSTPAddonsAjaxHandler {
             }
 
             YSTPAddonsSettingsRepo::set( $safe_key, $clean );
+            $saved_keys[] = $safe_key;
         }
+
+        /**
+         * 設定已儲存（供模組據此失效快取，如內容語言規則的隱藏清單）
+         *
+         * @param string[] $saved_keys 本次儲存的鍵名
+         */
+        do_action( 'ys_tp_settings_saved', $saved_keys );
 
         wp_send_json_success( [ 'message' => __( '已儲存', 'ys-translatepress-addons' ) ] );
     }

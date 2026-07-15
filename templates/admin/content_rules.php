@@ -12,15 +12,15 @@
 defined( 'ABSPATH' ) || exit;
 
 use YangSheep\TPAddons\Database\YSTPAddonsSettingsRepo;
+use YangSheep\TPAddons\Support\YSTPAddonsTP;
 
 $lang_col    = (int) YSTPAddonsSettingsRepo::get( 'content_lang_column', 1 );
 $redirect_on = (int) YSTPAddonsSettingsRepo::get( 'content_redirect_enabled', 1 );
 $status      = (string) YSTPAddonsSettingsRepo::get( 'content_redirect_status', '302' );
 $parent_on   = (int) YSTPAddonsSettingsRepo::get( 'content_fb_parent', 1 );
-$fb_post     = (string) YSTPAddonsSettingsRepo::get( 'content_fb_post', 'post_archive' );
-$fb_page     = (string) YSTPAddonsSettingsRepo::get( 'content_fb_page', 'home' );
-$fb_default  = (string) YSTPAddonsSettingsRepo::get( 'content_fb_default', 'home' );
 $fb_global   = (string) YSTPAddonsSettingsRepo::get( 'content_fb_global', 'home' );
+
+$languages = YSTPAddonsTP::languages();
 
 $pub_types = get_post_types( [ 'public' => true ], 'objects' );
 unset( $pub_types['attachment'] );
@@ -127,36 +127,48 @@ $render_fb = static function ( string $setting, string $current, bool $with_inhe
                 <p class="ystp-field-desc"><?php esc_html_e( '開啟後，會先沿階層往上找最近一個「該語言可見」的上層（頁面／階層式內容）並跳過去；找不到才用下方各類型的 fallback。', 'ys-translatepress-addons' ); ?></p>
             </div>
 
-            <div class="ystp-field">
-                <label><?php esc_html_e( '套用的內容類型', 'ys-translatepress-addons' ); ?></label>
-                <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:4px;">
+            <div class="ystp-field ystp-field-wide">
+                <label><?php esc_html_e( '各內容類型設定', 'ys-translatepress-addons' ); ?></label>
+                <p class="ystp-field-desc" style="margin:0 0 12px;"><?php esc_html_e( '每個內容類型可各自：是否套用規則、整個類型在哪些語言隱藏（一鍵關閉整個類型的多語顯示）、以及被隱藏時重導到哪。', 'ys-translatepress-addons' ); ?></p>
+                <div class="ystp-cr-types">
                     <?php foreach ( $pub_types as $pt ) :
-                        $default = in_array( $pt->name, [ 'post', 'page' ], true ) ? 1 : 0;
-                        $on      = (int) YSTPAddonsSettingsRepo::get( 'content_pt_' . $pt->name, $default );
+                        $default_on = in_array( $pt->name, [ 'post', 'page' ], true ) ? 1 : 0;
+                        $applied    = (int) YSTPAddonsSettingsRepo::get( 'content_pt_' . $pt->name, $default_on );
+                        $fb_def     = ( 'post' === $pt->name ) ? 'post_archive' : ( ( 'page' === $pt->name ) ? 'home' : 'inherit' );
+                        $fb_cur     = (string) YSTPAddonsSettingsRepo::get( 'content_fb_' . $pt->name, $fb_def );
                         ?>
-                        <label style="display:inline-flex;align-items:center;gap:5px;">
-                            <input type="checkbox" data-setting="content_pt_<?php echo esc_attr( $pt->name ); ?>" <?php checked( $on, 1 ); ?> />
-                            <?php echo esc_html( $pt->labels->singular_name ); ?> <code style="font-size:11px;"><?php echo esc_html( $pt->name ); ?></code>
-                        </label>
+                        <div class="ystp-cr-type">
+                            <div class="ystp-cr-type-head">
+                                <label class="ystp-toggle">
+                                    <input type="checkbox" data-setting="content_pt_<?php echo esc_attr( $pt->name ); ?>" <?php checked( $applied, 1 ); ?> />
+                                    <span class="ystp-slider"></span>
+                                </label>
+                                <span class="ystp-cr-type-name"><?php echo esc_html( $pt->labels->singular_name ); ?></span>
+                                <code class="ystp-cr-type-slug"><?php echo esc_html( $pt->name ); ?></code>
+                            </div>
+                            <div class="ystp-cr-type-body">
+                                <div class="ystp-cr-type-row">
+                                    <span class="ystp-cr-type-lbl"><?php esc_html_e( '整個類型隱藏於', 'ys-translatepress-addons' ); ?></span>
+                                    <span class="ystp-cr-hide-langs">
+                                        <?php foreach ( $languages as $code => $name ) :
+                                            $hk = 'content_pt_hide_' . $pt->name . '_' . strtolower( $code );
+                                            $hv = (int) YSTPAddonsSettingsRepo::get( $hk, 0 );
+                                            ?>
+                                            <label class="ystp-cr-hide-lang">
+                                                <input type="checkbox" data-setting="<?php echo esc_attr( $hk ); ?>" <?php checked( $hv, 1 ); ?> />
+                                                <?php echo esc_html( $name ); ?>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </span>
+                                </div>
+                                <div class="ystp-cr-type-row">
+                                    <span class="ystp-cr-type-lbl"><?php esc_html_e( '被隱藏時重導至', 'ys-translatepress-addons' ); ?></span>
+                                    <?php $render_fb( 'content_fb_' . $pt->name, $fb_cur ); ?>
+                                </div>
+                            </div>
+                        </div>
                     <?php endforeach; ?>
                 </div>
-            </div>
-
-            <div class="ystp-field" style="max-width:520px;">
-                <label><?php esc_html_e( '文章被隱藏時，重導至', 'ys-translatepress-addons' ); ?></label>
-                <?php $render_fb( 'content_fb_post', $fb_post ); ?>
-                <p class="ystp-field-desc"><?php esc_html_e( '建議：該語言的文章列表頁。', 'ys-translatepress-addons' ); ?></p>
-            </div>
-
-            <div class="ystp-field" style="max-width:520px;">
-                <label><?php esc_html_e( '頁面被隱藏時，重導至', 'ys-translatepress-addons' ); ?></label>
-                <?php $render_fb( 'content_fb_page', $fb_page ); ?>
-                <p class="ystp-field-desc"><?php esc_html_e( '建議：該語言的首頁。', 'ys-translatepress-addons' ); ?></p>
-            </div>
-
-            <div class="ystp-field" style="max-width:520px;">
-                <label><?php esc_html_e( '其他內容類型被隱藏時，重導至', 'ys-translatepress-addons' ); ?></label>
-                <?php $render_fb( 'content_fb_default', $fb_default ); ?>
             </div>
 
             <div class="ystp-field" style="max-width:520px;">
