@@ -25,6 +25,9 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
     public const META_LIST = '_ys_tp_content_lang_list';  // array of language codes
     private const CACHE_PREFIX = 'ys_tp_hidden_';
 
+    /** @var bool 防止 hidden_ids 內部查詢再觸發 exclude_from_lists 的無限遞迴（防禦性） */
+    private static bool $resolving = false;
+
     public function boot(): void {
         // 類型層級規則存於設定表，存檔後需失效隱藏清單快取（管理端與前台皆掛）
         add_action( 'ys_tp_settings_saved', [ $this, 'on_settings_saved' ] );
@@ -400,19 +403,24 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         }
 
         // (b) 類型層級：整個類型在此語言被關閉 → 該類型所有已發佈內容（無逐篇覆寫者）
+        //     🔴 必須用直接 SQL 取 ID：WP_Query／get_posts 會觸發 pre_get_posts →
+        //     exclude_from_lists → 再進 hidden_ids 造成無限遞迴（suppress_filters 不擋 pre_get_posts）。
+        $hidden_types = [];
         foreach ( $this->post_types() as $pt ) {
-            if ( ! self::is_type_hidden( $pt, $lang ) ) {
-                continue;
+            if ( self::is_type_hidden( $pt, $lang ) ) {
+                $hidden_types[] = $pt;
             }
-            $ids = get_posts( [
-                'post_type'        => $pt,
-                'post_status'      => 'publish',
-                'fields'           => 'ids',
-                'numberposts'      => -1,
-                'suppress_filters' => true,
-                'no_found_rows'    => true,
-            ] );
-            foreach ( $ids as $id ) {
+        }
+        if ( ! empty( $hidden_types ) ) {
+            $placeholders = implode( ',', array_fill( 0, count( $hidden_types ), '%s' ) );
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $type_ids = $wpdb->get_col(
+                $wpdb->prepare(
+                    "SELECT ID FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_type IN ( {$placeholders} )",
+                    $hidden_types
+                )
+            );
+            foreach ( (array) $type_ids as $id ) {
                 if ( ! isset( $ruled[ (int) $id ] ) ) {
                     $hidden[] = (int) $id;
                 }
@@ -482,9 +490,17 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         if ( $query->is_singular() ) {
             return;
         }
+        // 防禦：hidden_ids 計算期間若有巢狀查詢，不再進入（避免遞迴）
+        if ( self::$resolving ) {
+            return;
+        }
 
-        $lang   = YSTPAddonsTP::current_language();
+        $lang = YSTPAddonsTP::current_language();
+
+        self::$resolving = true;
         $hidden = $this->hidden_ids( $lang );
+        self::$resolving = false;
+
         if ( empty( $hidden ) ) {
             return;
         }
