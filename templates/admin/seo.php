@@ -15,6 +15,7 @@ use YangSheep\TPAddons\Database\YSTPAddonsSettingsRepo;
 use YangSheep\TPAddons\Support\YSTPAddonsTP;
 
 $meta_tr   = (int) YSTPAddonsSettingsRepo::get( 'seo_meta_translate', 1 );
+$img_alt   = (int) YSTPAddonsSettingsRepo::get( 'seo_image_alt', 0 );
 $region    = (int) YSTPAddonsSettingsRepo::get( 'seo_hreflang_region', 1 );
 $region_i  = (int) YSTPAddonsSettingsRepo::get( 'seo_hreflang_region_independent', 1 );
 $xd_on     = (int) YSTPAddonsSettingsRepo::get( 'seo_xdefault_enabled', 0 );
@@ -56,7 +57,14 @@ $has_rankmath = class_exists( 'RankMath' );
                 <label><?php esc_html_e( '翻譯 SEO 中繼資料', 'ys-translatepress-addons' ); ?></label>
                 <label class="ystp-toggle" style="margin-top:4px;"><input type="checkbox" data-setting="seo_meta_translate" <?php checked( $meta_tr, 1 ); ?> /><span class="ystp-slider"></span></label>
                 <p class="ystp-field-desc">
-                    <?php esc_html_e( '開啟後，頁面標題（<title>）、meta 描述、Open Graph／Twitter 社群標籤與圖片 alt 會成為可翻譯字串，可逐語言翻譯，前台輸出時自動替換為對應語言版本。', 'ys-translatepress-addons' ); ?>
+                    <?php esc_html_e( '開啟後，頁面標題（<title>）、meta 描述、Open Graph／Twitter 社群標籤會成為可翻譯字串，可逐語言翻譯，前台輸出時自動替換為對應語言版本。', 'ys-translatepress-addons' ); ?>
+                </p>
+            </div>
+            <div class="ystp-field">
+                <label><?php esc_html_e( '圖片 alt 獨立翻譯節點', 'ys-translatepress-addons' ); ?></label>
+                <label class="ystp-toggle" style="margin-top:4px;"><input type="checkbox" data-setting="seo_image_alt" <?php checked( $img_alt, 1 ); ?> /><span class="ystp-slider"></span></label>
+                <p class="ystp-field-desc">
+                    <?php esc_html_e( '預設關閉。TranslatePress 的圖片翻譯欄位本身即可翻譯 alt 文字，一般無需開啟。🔴 開啟會為圖片額外註冊獨立 alt 節點，可能與圖片的「新增媒體」上傳鈕重疊而使上傳鈕消失——若你需要在翻譯編輯器用媒體庫替換圖片，請保持關閉。', 'ys-translatepress-addons' ); ?>
                 </p>
             </div>
             <div class="ystp-note ystp-note-warn" style="margin:6px 0 14px;">

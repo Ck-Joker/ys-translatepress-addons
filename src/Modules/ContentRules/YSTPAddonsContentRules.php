@@ -50,17 +50,27 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
 
     /** @return string[] 套用規則的 post types（依各別 content_pt_{type} 設定） */
     private function post_types(): array {
-        $candidates = get_post_types( [ 'public' => true ], 'names' );
+        $candidates = get_post_types( [ 'public' => true ], 'objects' );
         unset( $candidates['attachment'] );
 
         $result = [];
         foreach ( $candidates as $pt ) {
-            $default = in_array( $pt, [ 'post', 'page' ], true ) ? 1 : 0;
-            if ( (int) YSTPAddonsSettingsRepo::get( 'content_pt_' . $pt, $default ) ) {
-                $result[] = $pt;
+            if ( (int) YSTPAddonsSettingsRepo::get( 'content_pt_' . $pt->name, self::pt_default( $pt ) ) ) {
+                $result[] = $pt->name;
             }
         }
         return $result ?: [ 'post', 'page' ];
+    }
+
+    /**
+     * 內容類型是否「預設納入」多語管理
+     *
+     * 內建 post／page，以及有封存頁（has_archive）的公開自訂類型（如產品、最新消息）
+     * 預設納入；頁面建構器等內部類型（無封存頁，如 Content Block／Stylebook）預設不納入。
+     * 使用者仍可在設定頁逐類型開關覆寫。
+     */
+    public static function pt_default( \WP_Post_Type $pt ): int {
+        return ( in_array( $pt->name, [ 'post', 'page' ], true ) || ! empty( $pt->has_archive ) ) ? 1 : 0;
     }
 
     private function redirect_enabled(): bool {
@@ -124,8 +134,17 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
             return;
         }
-        if ( empty( $_POST['ys_tp_content_nonce'] ) ||
-            ! wp_verify_nonce( sanitize_key( wp_unslash( $_POST['ys_tp_content_nonce'] ) ), 'ys_tp_content_' . $post_id ) ) {
+
+        // 接受「完整編輯器（逐篇 nonce）」或「快速編輯（靜態 nonce）」二者之一
+        $verified = false;
+        if ( ! empty( $_POST['ys_tp_content_nonce'] )
+            && wp_verify_nonce( sanitize_key( wp_unslash( $_POST['ys_tp_content_nonce'] ) ), 'ys_tp_content_' . $post_id ) ) {
+            $verified = true;
+        } elseif ( ! empty( $_POST['ys_tp_content_qe_nonce'] )
+            && wp_verify_nonce( sanitize_key( wp_unslash( $_POST['ys_tp_content_qe_nonce'] ) ), 'ys_tp_content_quickedit' ) ) {
+            $verified = true;
+        }
+        if ( ! $verified ) {
             return;
         }
         if ( ! current_user_can( 'edit_post', $post_id ) ) {
@@ -174,6 +193,66 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         // 列表上方語言篩選下拉 + 套用
         add_action( 'restrict_manage_posts', [ $this, 'render_lang_filter' ] );
         add_action( 'pre_get_posts', [ $this, 'filter_list_by_lang' ] );
+
+        // 快速編輯：於列表直接調整語言顯示規則
+        add_action( 'quick_edit_custom_box', [ $this, 'render_quick_edit' ], 10, 2 );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_quick_edit' ] );
+    }
+
+    /**
+     * 快速編輯：輸出「多語顯示規則」欄位（所有／排除／只在 + 語言勾選）
+     *
+     * WordPress 不會自動預填自訂欄位，值由 ys-tp-quickedit.js 依列表列的 data 屬性填入。
+     *
+     * @param string $column_name
+     * @param string $post_type
+     */
+    public function render_quick_edit( $column_name, $post_type ): void {
+        if ( 'ys_tp_langs' !== $column_name || ! in_array( $post_type, $this->post_types(), true ) ) {
+            return;
+        }
+        $languages = YSTPAddonsTP::languages();
+        if ( count( $languages ) < 2 ) {
+            return;
+        }
+        wp_nonce_field( 'ys_tp_content_quickedit', 'ys_tp_content_qe_nonce' );
+        ?>
+        <fieldset class="inline-edit-col-right ys-tp-qe">
+            <div class="inline-edit-col">
+                <span class="title inline-edit-categories-label"><?php esc_html_e( '多語顯示', 'ys-translatepress-addons' ); ?></span>
+                <ul class="ys-tp-qe-modes" style="margin:4px 0 6px;">
+                    <li><label><input type="radio" name="ys_tp_cr_mode" value="all" checked /> <?php esc_html_e( '所有語言顯示', 'ys-translatepress-addons' ); ?></label></li>
+                    <li><label><input type="radio" name="ys_tp_cr_mode" value="exclude" /> <?php esc_html_e( '排除以下語言', 'ys-translatepress-addons' ); ?></label></li>
+                    <li><label><input type="radio" name="ys_tp_cr_mode" value="include" /> <?php esc_html_e( '只在以下語言顯示', 'ys-translatepress-addons' ); ?></label></li>
+                </ul>
+                <span class="ys-tp-qe-langs" style="display:none;padding-left:2px;">
+                    <?php foreach ( $languages as $code => $name ) : ?>
+                        <label style="display:inline-block;margin:0 10px 4px 0;"><input type="checkbox" name="ys_tp_cr_list[]" value="<?php echo esc_attr( $code ); ?>" /> <?php echo esc_html( $name ); ?></label>
+                    <?php endforeach; ?>
+                </span>
+            </div>
+        </fieldset>
+        <?php
+    }
+
+    /**
+     * 於套用類型的列表頁載入快速編輯 JS
+     */
+    public function enqueue_quick_edit( string $hook ): void {
+        if ( 'edit.php' !== $hook ) {
+            return;
+        }
+        $screen = get_current_screen();
+        if ( ! $screen || ! in_array( $screen->post_type, $this->post_types(), true ) ) {
+            return;
+        }
+        wp_enqueue_script(
+            'ys-tp-quickedit',
+            YS_TP_PLUGIN_URL . 'assets/js/ys-tp-quickedit.js',
+            [ 'jquery', 'inline-edit-post' ],
+            YS_TP_VERSION,
+            true
+        );
     }
 
     /**
@@ -303,6 +382,16 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
             );
         }
         echo '</span>';
+
+        // 供「快速編輯」JS 讀取目前規則以預填
+        $mode = get_post_meta( (int) $post_id, self::META_MODE, true ) ?: 'all';
+        $list = get_post_meta( (int) $post_id, self::META_LIST, true );
+        $list = is_array( $list ) ? $list : [];
+        printf(
+            '<span class="ys-tp-lang-data" data-mode="%s" data-list="%s" style="display:none;"></span>',
+            esc_attr( $mode ),
+            esc_attr( implode( ',', $list ) )
+        );
     }
 
     /**

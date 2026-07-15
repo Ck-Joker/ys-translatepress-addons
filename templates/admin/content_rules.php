@@ -132,7 +132,7 @@ $render_fb = static function ( string $setting, string $current, bool $with_inhe
                 <p class="ystp-field-desc" style="margin:0 0 12px;"><?php esc_html_e( '每個內容類型可各自：是否套用規則、整個類型在哪些語言隱藏（一鍵關閉整個類型的多語顯示）、以及被隱藏時重導到哪。', 'ys-translatepress-addons' ); ?></p>
                 <div class="ystp-cr-types">
                     <?php foreach ( $pub_types as $pt ) :
-                        $default_on = in_array( $pt->name, [ 'post', 'page' ], true ) ? 1 : 0;
+                        $default_on = \YangSheep\TPAddons\Modules\ContentRules\YSTPAddonsContentRules::pt_default( $pt );
                         $applied    = (int) YSTPAddonsSettingsRepo::get( 'content_pt_' . $pt->name, $default_on );
                         $fb_def     = ( 'post' === $pt->name ) ? 'post_archive' : ( ( 'page' === $pt->name ) ? 'home' : 'inherit' );
                         $fb_cur     = (string) YSTPAddonsSettingsRepo::get( 'content_fb_' . $pt->name, $fb_def );

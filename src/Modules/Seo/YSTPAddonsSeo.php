@@ -104,12 +104,17 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
             'attribute' => true,
         ];
 
-        // 圖片替代文字 alt（內容圖片，列於 String List）
-        $accessors['image_alt'] = [
-            'selector'  => 'img[alt]',
-            'accessor'  => 'alt',
-            'attribute' => true,
-        ];
+        // 圖片替代文字 alt：預設「不」註冊獨立節點。
+        // TranslatePress 免費版的圖片節點（image_src）本身在編輯器就以「新增媒體」欄位
+        // 同時顯示並可翻譯 alt；若我們再註冊獨立的 img[alt] 節點，會與該媒體欄位重疊，
+        // 導致該圖片的「新增媒體」上傳鈕消失。故預設關閉，需要時才由設定開啟。
+        if ( (int) YSTPAddonsSettingsRepo::get( 'seo_image_alt', 0 ) ) {
+            $accessors['image_alt'] = [
+                'selector'  => 'img[alt]',
+                'accessor'  => 'alt',
+                'attribute' => true,
+            ];
+        }
 
         return $accessors;
     }
@@ -198,21 +203,87 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
         if ( '' === $output || '' === $loc ) {
             return $output;
         }
+
         $post_id = self::resolve_post_id( $loc );
-        $links   = '';
+        $default = YSTPAddonsTP::default_language();
+
+        // 收集「未被內容規則隱藏」的語言（PRO 沒有此排除，為本外掛獨有）
+        $langs = [];
         foreach ( YSTPAddonsTP::published_language_codes() as $code ) {
             if ( $post_id && self::is_hidden_in_language( $post_id, $code ) ) {
                 continue;
             }
-            $hreflang = str_replace( '_', '-', $code );
-            $href     = YSTPAddonsTP::url_for_language( $code, $loc );
-            $links   .= "\t\t<xhtml:link rel=\"alternate\" hreflang=\"" . esc_attr( $hreflang ) . '" href="' . esc_url( $href ) . "\" />\n";
+            $langs[] = $code;
         }
-        if ( '' === $links ) {
+        if ( empty( $langs ) ) {
             return $output;
         }
-        // 在 </url> 前插入
-        return str_replace( '</url>', $links . "\t</url>", $output );
+
+        $add_country = (bool) apply_filters( 'trp_add_country_hreflang_tags', true );
+        $add_region  = (bool) apply_filters( 'trp_add_region_independent_hreflang_tags', true );
+
+        // 全語言 alternate：country（en-US/zh-TW）+ region-independent（en/zh），套用到每個 <url>
+        $alternate   = '';
+        $region_seen = [];
+        foreach ( $langs as $code ) {
+            $stripped = str_replace( [ '_formal', '_informal' ], '', $code ); // 比照 TP strip_formality
+            $href     = YSTPAddonsTP::url_for_language( $code, $loc );
+            if ( $add_country ) {
+                $alternate .= self::hreflang_link( str_replace( '_', '-', $stripped ), $href );
+            }
+            if ( $add_region ) {
+                $ri = (string) strtok( $stripped, '_' );
+                if ( '' !== $ri && ! isset( $region_seen[ $ri ] ) ) {
+                    $region_seen[ $ri ] = true;
+                    $alternate         .= self::hreflang_link( $ri, $href );
+                }
+            }
+        }
+
+        // x-default（本外掛設定啟用時）
+        if ( (int) YSTPAddonsSettingsRepo::get( 'seo_xdefault_enabled', 0 ) ) {
+            $xd = (string) YSTPAddonsSettingsRepo::get( 'seo_xdefault_lang', $default );
+            if ( in_array( $xd, $langs, true ) ) {
+                $alternate .= self::hreflang_link( 'x-default', YSTPAddonsTP::url_for_language( $xd, $loc ) );
+            }
+        }
+
+        if ( '' === $alternate ) {
+            return $output;
+        }
+
+        // 複用原 <url> 的 lastmod / image 給各語言條目
+        $lastmod = '';
+        if ( preg_match( '#<lastmod>.*?</lastmod>#s', $output, $m ) ) {
+            $lastmod = "\t\t" . trim( $m[0] ) . "\n";
+        }
+        $images = '';
+        if ( preg_match_all( '#<image:image>.*?</image:image>#s', $output, $im ) ) {
+            foreach ( $im[0] as $img ) {
+                $images .= "\t\t" . trim( $img ) . "\n";
+            }
+        }
+
+        // 每個「非預設語言」各產生獨立 <url> 條目（比照 PRO，讓 sitemap 實際列出各語言網址）
+        $lang_entries = '';
+        foreach ( $langs as $code ) {
+            if ( $code === $default ) {
+                continue;
+            }
+            $lurl = YSTPAddonsTP::url_for_language( $code, $loc );
+            if ( '' === $lurl || untrailingslashit( $lurl ) === untrailingslashit( $loc ) ) {
+                continue;
+            }
+            $lang_entries .= "\t<url>\n\t\t<loc>" . esc_url( $lurl ) . "</loc>\n" . $lastmod . $images . $alternate . "\t</url>\n";
+        }
+
+        // 原 <url> 的 </url> 前插入 alternate，其後接各語言獨立條目
+        return str_replace( '</url>', $alternate . "\t</url>\n" . $lang_entries, $output );
+    }
+
+    /** 產生單一 <xhtml:link> alternate 節點 */
+    private static function hreflang_link( string $hreflang, string $href ): string {
+        return "\t\t<xhtml:link rel=\"alternate\" hreflang=\"" . esc_attr( $hreflang ) . '" href="' . esc_url( $href ) . "\" />\n";
     }
 
     /**
