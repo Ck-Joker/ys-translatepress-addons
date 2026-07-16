@@ -32,13 +32,21 @@ $pages = get_posts( [ 'post_type' => 'page', 'numberposts' => 100, 'post_status'
  *
  * @param bool $with_inherit 是否提供「未指定（用全域預設）」選項
  */
-$render_fb = static function ( string $setting, string $current, bool $with_inherit = true ) use ( $pages ) {
+$render_fb = static function ( string $setting, string $current, bool $with_inherit = true, ?\WP_Post_Type $pt = null ) use ( $pages ) {
     $options = [];
     if ( $with_inherit ) {
         $options['inherit'] = __( '未指定（用全域預設跳轉頁）', 'ys-translatepress-addons' );
     }
     $options['home']         = __( '該語言的首頁', 'ys-translatepress-addons' );
     $options['post_archive'] = __( '該語言的文章列表頁', 'ys-translatepress-addons' );
+    // 有封存頁的自訂類型：提供「該類型自身的封存頁」（如產品 → /product/、消息 → /news/）
+    if ( $pt && ! in_array( $pt->name, [ 'post', 'page' ], true ) && ! empty( $pt->has_archive ) ) {
+        $options['cpt_archive'] = sprintf(
+            /* translators: %s: 內容類型單數名稱 */
+            __( '該語言的「%s」封存頁', 'ys-translatepress-addons' ),
+            $pt->labels->singular_name
+        );
+    }
     echo '<select data-setting="' . esc_attr( $setting ) . '">';
     foreach ( $options as $val => $label ) {
         echo '<option value="' . esc_attr( $val ) . '" ' . selected( $current, $val, false ) . '>' . esc_html( $label ) . '</option>';
@@ -134,7 +142,7 @@ $render_fb = static function ( string $setting, string $current, bool $with_inhe
                     <?php foreach ( $pub_types as $pt ) :
                         $default_on = \YangSheep\TPAddons\Modules\ContentRules\YSTPAddonsContentRules::pt_default( $pt );
                         $applied    = (int) YSTPAddonsSettingsRepo::get( 'content_pt_' . $pt->name, $default_on );
-                        $fb_def     = ( 'post' === $pt->name ) ? 'post_archive' : ( ( 'page' === $pt->name ) ? 'home' : 'inherit' );
+                        $fb_def     = \YangSheep\TPAddons\Modules\ContentRules\YSTPAddonsContentRules::pt_fallback_default( $pt->name );
                         $fb_cur     = (string) YSTPAddonsSettingsRepo::get( 'content_fb_' . $pt->name, $fb_def );
                         ?>
                         <div class="ystp-cr-type">
@@ -163,7 +171,7 @@ $render_fb = static function ( string $setting, string $current, bool $with_inhe
                                 </div>
                                 <div class="ystp-cr-type-row">
                                     <span class="ystp-cr-type-lbl"><?php esc_html_e( '被隱藏時重導至', 'ys-translatepress-addons' ); ?></span>
-                                    <?php $render_fb( 'content_fb_' . $pt->name, $fb_cur ); ?>
+                                    <?php $render_fb( 'content_fb_' . $pt->name, $fb_cur, true, $pt ); ?>
                                 </div>
                             </div>
                         </div>

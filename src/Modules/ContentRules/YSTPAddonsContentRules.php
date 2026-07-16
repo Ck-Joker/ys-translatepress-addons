@@ -73,6 +73,28 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         return ( in_array( $pt->name, [ 'post', 'page' ], true ) || ! empty( $pt->has_archive ) ) ? 1 : 0;
     }
 
+    /**
+     * 內容類型「被隱藏時重導」的預設 fallback 目標
+     *
+     * 文章 → 該語言文章列表頁（post_archive）；頁面 → 該語言首頁（home）；
+     * 有封存頁的自訂類型 → 該類型自身的封存頁（cpt_archive，如產品 → /product/、消息 → /news/）；
+     * 其餘（無封存頁）→ 未指定（inherit，改用全域預設）。模板與 fallback_url 共用此邏輯，
+     * 確保下拉預設值與實際重導一致。
+     */
+    public static function pt_fallback_default( string $post_type ): string {
+        if ( 'post' === $post_type ) {
+            return 'post_archive';
+        }
+        if ( 'page' === $post_type ) {
+            return 'home';
+        }
+        $obj = get_post_type_object( $post_type );
+        if ( $obj && ! empty( $obj->has_archive ) ) {
+            return 'cpt_archive';
+        }
+        return 'inherit';
+    }
+
     private function redirect_enabled(): bool {
         return (bool) (int) YSTPAddonsSettingsRepo::get( 'content_redirect_enabled', 1 );
     }
@@ -522,13 +544,17 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
     }
 
     /**
-     * 設定存檔後：類型層級規則變動時失效隱藏清單快取
+     * 設定存檔後：影響隱藏清單的規則變動時失效快取
+     *
+     * 涵蓋「整個類型隱藏於某語言」(content_pt_hide_{type}_{lang}) 與
+     * 「該類型是否套用規則」(content_pt_{type})——後者會改變 hidden_ids 掃描的類型集合，
+     * 兩者皆以 content_pt 前綴起始，故一併偵測。
      *
      * @param string[] $keys
      */
     public function on_settings_saved( $keys ): void {
         foreach ( (array) $keys as $k ) {
-            if ( is_string( $k ) && 0 === strpos( $k, 'content_pt_hide_' ) ) {
+            if ( is_string( $k ) && 0 === strpos( $k, 'content_pt' ) ) {
                 $this->flush_cache();
                 return;
             }
@@ -730,11 +756,8 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
      * 每個 post type 可設定目標，或設為「未指定」改用全域預設跳轉頁。
      */
     private function fallback_url( string $post_type, string $lang ): string {
-        // 每個內容類型各自的重導目標（content_fb_{type}）；沿用舊的 content_fb_post／content_fb_page
-        $default = ( 'post' === $post_type )
-            ? 'post_archive'
-            : ( ( 'page' === $post_type ) ? 'home' : 'inherit' );
-        $opt = (string) YSTPAddonsSettingsRepo::get( 'content_fb_' . $post_type, $default );
+        // 每個內容類型各自的重導目標（content_fb_{type}）；預設值與設定頁下拉共用 pt_fallback_default
+        $opt = (string) YSTPAddonsSettingsRepo::get( 'content_fb_' . $post_type, self::pt_fallback_default( $post_type ) );
 
         // 未指定 → 全域預設跳轉頁
         if ( '' === $opt || 'inherit' === $opt ) {

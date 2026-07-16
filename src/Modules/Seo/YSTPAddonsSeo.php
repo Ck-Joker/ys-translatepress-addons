@@ -194,63 +194,48 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
     }
 
     /**
-     * 在單一 <url> 區塊內插入各語言 xhtml:link alternate
+     * 在單一 <url> 區塊內插入各語言 xhtml:link alternate，並為每個非原始語言各補一筆獨立 <url>
      *
-     * 被「內容語言規則」排除該語言的內容，不輸出該語言的 alternate
-     * （避免 sitemap 指向會被重導／404 的網址）。
+     * 邏輯比照 TranslatePress PRO 的 sitemap_add_language_urls：
+     * - 每個發佈語言輸出 country（en-US）與 region-independent（en）hreflang（含去重）+ x-default
+     * - 每個「非原始語言」各產生獨立 <url><loc>/en/…</loc>，使 sitemap 實際列出各語言網址
+     *
+     * 本外掛獨有：被「內容語言規則」隱藏某語言的內容，不為該語言輸出 alternate 或條目；
+     * 若「原始語言」（原 <loc> 對應語言）本身被隱藏，則整筆原 <url> 不輸出（避免 sitemap
+     * 指向必被重導／404 的網址）；全部語言皆被隱藏則整個 <url> 移除。
      */
     private function inject_alternates( string $output, string $loc ): string {
         if ( '' === $output || '' === $loc ) {
             return $output;
         }
 
-        $post_id = self::resolve_post_id( $loc );
-        $default = YSTPAddonsTP::default_language();
+        $post_id  = self::resolve_post_id( $loc );
+        $settings = YSTPAddonsTP::settings();
+        $default  = YSTPAddonsTP::default_language();
+        $publish  = YSTPAddonsTP::published_language_codes();
+
+        // 原 <loc> 對應語言：一般為預設語言；若「預設語言使用子目錄」且首個發佈語言非預設，
+        // SEO 外掛產生的 <loc> 會是首個發佈語言（比照 PRO）。可由 filter 覆寫（多網域外掛用）。
+        $original_language = ( ( $settings['add-subdirectory-to-default-language'] ?? '' ) === 'yes' && isset( $publish[0] ) )
+            ? (string) $publish[0]
+            : $default;
+        $original_language = (string) apply_filters( 'trp_sitemap_url_original_language', $original_language, $loc, $settings );
 
         // 收集「未被內容規則隱藏」的語言（PRO 沒有此排除，為本外掛獨有）
         $langs = [];
-        foreach ( YSTPAddonsTP::published_language_codes() as $code ) {
+        foreach ( $publish as $code ) {
             if ( $post_id && self::is_hidden_in_language( $post_id, $code ) ) {
                 continue;
             }
             $langs[] = $code;
         }
+        // 全部語言皆被隱藏 → 從 sitemap 移除整個 <url>
         if ( empty( $langs ) ) {
-            return $output;
+            return '';
         }
 
         $add_country = (bool) apply_filters( 'trp_add_country_hreflang_tags', true );
         $add_region  = (bool) apply_filters( 'trp_add_region_independent_hreflang_tags', true );
-
-        // 全語言 alternate：country（en-US/zh-TW）+ region-independent（en/zh），套用到每個 <url>
-        $alternate   = '';
-        $region_seen = [];
-        foreach ( $langs as $code ) {
-            $stripped = str_replace( [ '_formal', '_informal' ], '', $code ); // 比照 TP strip_formality
-            $href     = YSTPAddonsTP::url_for_language( $code, $loc );
-            if ( $add_country ) {
-                $alternate .= self::hreflang_link( str_replace( '_', '-', $stripped ), $href );
-            }
-            if ( $add_region ) {
-                $ri = (string) strtok( $stripped, '_' );
-                if ( '' !== $ri && ! isset( $region_seen[ $ri ] ) ) {
-                    $region_seen[ $ri ] = true;
-                    $alternate         .= self::hreflang_link( $ri, $href );
-                }
-            }
-        }
-
-        // x-default（本外掛設定啟用時）
-        if ( (int) YSTPAddonsSettingsRepo::get( 'seo_xdefault_enabled', 0 ) ) {
-            $xd = (string) YSTPAddonsSettingsRepo::get( 'seo_xdefault_lang', $default );
-            if ( in_array( $xd, $langs, true ) ) {
-                $alternate .= self::hreflang_link( 'x-default', YSTPAddonsTP::url_for_language( $xd, $loc ) );
-            }
-        }
-
-        if ( '' === $alternate ) {
-            return $output;
-        }
 
         // 複用原 <url> 的 lastmod / image 給各語言條目
         $lastmod = '';
@@ -264,26 +249,96 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
             }
         }
 
-        // 每個「非預設語言」各產生獨立 <url> 條目（比照 PRO，讓 sitemap 實際列出各語言網址）
-        $lang_entries = '';
+        $alternate         = '';
+        $country_hreflangs = [];   // 已輸出的 country hreflang（供 region-independent 去重）
+        $region_seen       = [];   // 已納入的 region-independent code
+        $region_pending    = [];   // language => region-independent <link>（延後決定是否輸出）
+        $other_lang_urls   = [];   // 各非原始語言的獨立 <url> 開頭（尾端稍後補 alternate）
+
         foreach ( $langs as $code ) {
-            if ( $code === $default ) {
-                continue;
+            $href = YSTPAddonsTP::url_for_language( $code, $loc );
+
+            if ( $add_country ) {
+                $hreflang            = str_replace( '_', '-', self::strip_formality( $code ) );
+                $hreflang            = (string) apply_filters( 'trp_hreflang', $hreflang, $code );
+                $country_hreflangs[] = $hreflang;
+                $alternate          .= self::hreflang_link( $hreflang, $href );
             }
-            $lurl = YSTPAddonsTP::url_for_language( $code, $loc );
-            if ( '' === $lurl || untrailingslashit( $lurl ) === untrailingslashit( $loc ) ) {
-                continue;
+
+            if ( $add_region ) {
+                $ri = (string) apply_filters( 'trp_hreflang', (string) strtok( $code, '_' ), $code );
+                if ( '' !== $ri && ! in_array( $ri, $region_seen, true ) ) {
+                    $region_seen[]           = $ri;
+                    $region_pending[ $code ] = self::hreflang_link( $ri, $href );
+                }
             }
-            $lang_entries .= "\t<url>\n\t\t<loc>" . esc_url( $lurl ) . "</loc>\n" . $lastmod . $images . $alternate . "\t</url>\n";
+
+            if ( $code !== $original_language && '' !== $href ) {
+                $other_lang_urls[] = "\t<url>\n\t\t<loc>" . esc_url( $href ) . "</loc>\n" . $lastmod . $images;
+            }
         }
 
-        // 原 <url> 的 </url> 前插入 alternate，其後接各語言獨立條目
-        return str_replace( '</url>', $alternate . "\t</url>\n" . $lang_entries, $output );
+        // region-independent 去重：其 code 未出現在 country hreflang 清單時才輸出（比照 PRO）
+        foreach ( $region_pending as $code => $link ) {
+            $ri = (string) apply_filters( 'trp_hreflang', (string) strtok( $code, '_' ), $code );
+            if ( ! in_array( $ri, $country_hreflangs, true ) ) {
+                $alternate .= $link;
+            }
+        }
+
+        // x-default（本外掛設定啟用時；指向語言須為可見）
+        if ( (int) YSTPAddonsSettingsRepo::get( 'seo_xdefault_enabled', 0 ) ) {
+            $xd = (string) YSTPAddonsSettingsRepo::get( 'seo_xdefault_lang', $default );
+            if ( in_array( $xd, $langs, true ) ) {
+                $alternate .= self::hreflang_link( 'x-default', YSTPAddonsTP::url_for_language( $xd, $loc ) );
+            }
+        }
+
+        if ( '' === $alternate ) {
+            return $output;
+        }
+
+        // 組出各語言獨立 <url>（每筆尾端補上相同 alternate + 收尾）
+        $all_lang_urls = '';
+        foreach ( $other_lang_urls as $u ) {
+            $all_lang_urls .= $u . $alternate . "\t</url>\n";
+        }
+
+        // 原始語言（原 <loc>）被內容規則隱藏 → 不輸出原 <url>，只保留可見語言的獨立條目
+        if ( ! in_array( $original_language, $langs, true ) ) {
+            return $all_lang_urls;
+        }
+
+        // 原始語言可見：於原 <url> 的 </url> 前插入 alternate，其後接各語言獨立條目
+        $new_output = str_replace( '</url>', $alternate . "\t</url>\n" . $all_lang_urls, $output );
+
+        // 子目錄預設語言／多網域：原 <loc> 需改寫為 original_language 的網址（比照 PRO；找不到則原樣）
+        $translated_loc = YSTPAddonsTP::url_for_language( $original_language, $loc );
+        if ( '' !== $translated_loc && $translated_loc !== $loc ) {
+            $new_output = str_replace(
+                '<loc>' . $loc . '</loc>',
+                '<loc>' . esc_url( $translated_loc ) . '</loc>',
+                $new_output
+            );
+        }
+
+        return $new_output;
     }
 
     /** 產生單一 <xhtml:link> alternate 節點 */
     private static function hreflang_link( string $hreflang, string $href ): string {
         return "\t\t<xhtml:link rel=\"alternate\" hreflang=\"" . esc_attr( $hreflang ) . '" href="' . esc_url( $href ) . "\" />\n";
+    }
+
+    /**
+     * 去除語言碼的 formality 後綴（優先用 TP url_converter，退回字串替換）
+     */
+    private static function strip_formality( string $code ): string {
+        $converter = YSTPAddonsTP::component( 'url_converter' );
+        if ( $converter && method_exists( $converter, 'strip_formality_from_language_code' ) ) {
+            return (string) $converter->strip_formality_from_language_code( $code );
+        }
+        return str_replace( [ '_formal', '_informal' ], '', $code );
     }
 
     /**

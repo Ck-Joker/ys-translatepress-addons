@@ -24,17 +24,18 @@ class YSTPAddonsModules {
     private static ?array $status_cache = null;
 
     /**
-     * 所有模組的中繼資料
+     * 模組的結構性定義（不含需翻譯的字串）
      *
+     * ⚠️ 這裡刻意「不」呼叫 __()：狀態查詢（status／is_enabled／enabled）會在 plugins_loaded
+     * （早於 init）被觸發，若在此呼叫翻譯函式會引發 WP 6.7+ 的 _load_textdomain_just_in_time
+     * 通知。需要翻譯字串（label／desc）的 all() 只在後台介面（init 之後）呼叫。
      * class 為 null 表示「規劃中／尚未實作」，僅在總覽展示藍圖，不會 boot。
      *
      * @return array<string, array<string, mixed>>
      */
-    public static function all(): array {
+    private static function definitions(): array {
         return [
             'unlock_languages' => [
-                'label'   => __( '解鎖語言數量', 'ys-translatepress-addons' ),
-                'desc'    => __( '移除免費版「僅 1 個次要語言」的限制，可新增無限多語言。', 'ys-translatepress-addons' ),
                 'icon'    => 'dashicons-translation',
                 'page'    => 'ys-tp-languages',
                 'class'   => \YangSheep\TPAddons\Modules\UnlockLanguages\YSTPAddonsUnlockLanguages::class,
@@ -42,8 +43,6 @@ class YSTPAddonsModules {
                 'phase'   => 0,
             ],
             'language_switcher' => [
-                'label'   => __( '語言切換器', 'ys-translatepress-addons' ),
-                'desc'    => __( '全新設計的語言切換短代碼：固定浮動、彈出視窗、下拉選單等多種樣式。', 'ys-translatepress-addons' ),
                 'icon'    => 'dashicons-admin-site-alt3',
                 'page'    => 'ys-tp-switcher',
                 'class'   => \YangSheep\TPAddons\Modules\LanguageSwitcher\YSTPAddonsLanguageSwitcher::class,
@@ -51,8 +50,6 @@ class YSTPAddonsModules {
                 'phase'   => 1,
             ],
             'auto_detect' => [
-                'label'   => __( '語言自動偵測', 'ys-translatepress-addons' ),
-                'desc'    => __( '依瀏覽器語言自動建議語言，重新設計的精緻提示介面。', 'ys-translatepress-addons' ),
                 'icon'    => 'dashicons-location-alt',
                 'page'    => 'ys-tp-detect',
                 'class'   => \YangSheep\TPAddons\Modules\AutoDetect\YSTPAddonsAutoDetect::class,
@@ -60,8 +57,6 @@ class YSTPAddonsModules {
                 'phase'   => 1,
             ],
             'menu_language' => [
-                'label'   => __( '選單語言控制', 'ys-translatepress-addons' ),
-                'desc'    => __( '針對每個選單項目設定在哪些語言顯示或隱藏。', 'ys-translatepress-addons' ),
                 'icon'    => 'dashicons-menu',
                 'page'    => 'ys-tp-menu',
                 'class'   => \YangSheep\TPAddons\Modules\MenuLanguage\YSTPAddonsMenuLanguage::class,
@@ -69,8 +64,6 @@ class YSTPAddonsModules {
                 'phase'   => 1,
             ],
             'content_rules' => [
-                'label'   => __( '內容語言規則', 'ys-translatepress-addons' ),
-                'desc'    => __( '頁面／文章／自訂內容可排除或指定語言顯示，切換語言時自動重導至該語言的對應頁。', 'ys-translatepress-addons' ),
                 'icon'    => 'dashicons-filter',
                 'page'    => 'ys-tp-content',
                 'class'   => \YangSheep\TPAddons\Modules\ContentRules\YSTPAddonsContentRules::class,
@@ -78,8 +71,6 @@ class YSTPAddonsModules {
                 'phase'   => 1,
             ],
             'ai_translate' => [
-                'label'   => __( 'AI 翻譯', 'ys-translatepress-addons' ),
-                'desc'    => __( '支援 OpenAI／Gemini／Claude，提供自動、手動逐頁、全站與排程背景翻譯。', 'ys-translatepress-addons' ),
                 'icon'    => 'dashicons-superhero',
                 'page'    => 'ys-tp-ai',
                 'class'   => \YangSheep\TPAddons\Modules\AiTranslate\YSTPAddonsAiTranslate::class,
@@ -87,8 +78,6 @@ class YSTPAddonsModules {
                 'phase'   => 2,
             ],
             'seo' => [
-                'label'   => __( 'SEO 增強', 'ys-translatepress-addons' ),
-                'desc'    => __( 'hreflang 細控（地區標籤／x-default）與多語 sitemap（相容 Yoast／RankMath）。', 'ys-translatepress-addons' ),
                 'icon'    => 'dashicons-search',
                 'page'    => 'ys-tp-seo',
                 'class'   => \YangSheep\TPAddons\Modules\Seo\YSTPAddonsSeo::class,
@@ -96,8 +85,6 @@ class YSTPAddonsModules {
                 'phase'   => 3,
             ],
             'import_export' => [
-                'label'   => __( '翻譯匯出／匯入', 'ys-translatepress-addons' ),
-                'desc'    => __( '全站或單頁匯出翻譯文字，外部編修後再匯入。', 'ys-translatepress-addons' ),
                 'icon'    => 'dashicons-database-export',
                 'page'    => 'ys-tp-io',
                 'class'   => \YangSheep\TPAddons\Modules\ImportExport\YSTPAddonsImportExport::class,
@@ -105,6 +92,64 @@ class YSTPAddonsModules {
                 'phase'   => 3,
             ],
         ];
+    }
+
+    /**
+     * 模組的顯示名稱與說明（需翻譯；僅於後台介面 init 之後呼叫）
+     *
+     * @return array<string, array<string, string>>
+     */
+    private static function labels(): array {
+        return [
+            'unlock_languages'  => [
+                'label' => __( '解鎖語言數量', 'ys-translatepress-addons' ),
+                'desc'  => __( '移除免費版「僅 1 個次要語言」的限制，可新增無限多語言。', 'ys-translatepress-addons' ),
+            ],
+            'language_switcher' => [
+                'label' => __( '語言切換器', 'ys-translatepress-addons' ),
+                'desc'  => __( '全新設計的語言切換短代碼：固定浮動、彈出視窗、下拉選單等多種樣式。', 'ys-translatepress-addons' ),
+            ],
+            'auto_detect'       => [
+                'label' => __( '語言自動偵測', 'ys-translatepress-addons' ),
+                'desc'  => __( '依瀏覽器語言自動建議語言，重新設計的精緻提示介面。', 'ys-translatepress-addons' ),
+            ],
+            'menu_language'     => [
+                'label' => __( '選單語言控制', 'ys-translatepress-addons' ),
+                'desc'  => __( '針對每個選單項目設定在哪些語言顯示或隱藏。', 'ys-translatepress-addons' ),
+            ],
+            'content_rules'     => [
+                'label' => __( '內容語言規則', 'ys-translatepress-addons' ),
+                'desc'  => __( '頁面／文章／自訂內容可排除或指定語言顯示，切換語言時自動重導至該語言的對應頁。', 'ys-translatepress-addons' ),
+            ],
+            'ai_translate'      => [
+                'label' => __( 'AI 翻譯', 'ys-translatepress-addons' ),
+                'desc'  => __( '支援 OpenAI／Gemini／Claude，提供自動、手動逐頁、全站與排程背景翻譯。', 'ys-translatepress-addons' ),
+            ],
+            'seo'               => [
+                'label' => __( 'SEO 增強', 'ys-translatepress-addons' ),
+                'desc'  => __( 'hreflang 細控（地區標籤／x-default）與多語 sitemap（相容 Yoast／RankMath）。', 'ys-translatepress-addons' ),
+            ],
+            'import_export'     => [
+                'label' => __( '翻譯匯出／匯入', 'ys-translatepress-addons' ),
+                'desc'  => __( '全站或單頁匯出翻譯文字，外部編修後再匯入。', 'ys-translatepress-addons' ),
+            ],
+        ];
+    }
+
+    /**
+     * 所有模組的完整中繼資料（結構定義 + 翻譯標籤）
+     *
+     * 供後台總覽／設定頁使用。呼叫時機須在 init 之後（含 __()）。
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function all(): array {
+        $labels = self::labels();
+        $result = [];
+        foreach ( self::definitions() as $key => $def ) {
+            $result[ $key ] = array_merge( $labels[ $key ] ?? [], $def );
+        }
+        return $result;
     }
 
     /**
@@ -133,7 +178,7 @@ class YSTPAddonsModules {
         }
 
         $status = [];
-        foreach ( self::all() as $key => $meta ) {
+        foreach ( self::definitions() as $key => $meta ) {
             $status[ $key ] = isset( $stored[ $key ] )
                 ? (bool) $stored[ $key ]
                 : (bool) ( $meta['default'] ?? false );
@@ -158,7 +203,7 @@ class YSTPAddonsModules {
      */
     public static function enabled(): array {
         $result = [];
-        foreach ( self::all() as $key => $meta ) {
+        foreach ( self::definitions() as $key => $meta ) {
             if ( ! empty( $meta['class'] ) && self::is_enabled( $key ) ) {
                 $result[ $key ] = $meta;
             }
