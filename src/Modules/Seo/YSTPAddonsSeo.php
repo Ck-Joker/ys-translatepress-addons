@@ -149,13 +149,11 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
      * @param array  $url    url 資料
      */
     public function yoast_sitemap_alternates( $output, $url ) {
-        $loc = is_array( $url ) ? ( $url['loc'] ?? '' ) : '';
-        return $this->inject_alternates( (string) $output, (string) $loc );
+        return $this->inject_alternates( (string) $output, is_array( $url ) ? $url : [] );
     }
 
     public function rankmath_sitemap_alternates( $output, $url ) {
-        $loc = is_array( $url ) ? ( $url['loc'] ?? '' ) : '';
-        return $this->inject_alternates( (string) $output, (string) $loc );
+        return $this->inject_alternates( (string) $output, is_array( $url ) ? $url : [] );
     }
 
     /**
@@ -203,16 +201,34 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
      * 本外掛獨有：被「內容語言規則」隱藏某語言的內容，不為該語言輸出 alternate 或條目；
      * 若「原始語言」（原 <loc> 對應語言）本身被隱藏，則整筆原 <url> 不輸出（避免 sitemap
      * 指向必被重導／404 的網址）；全部語言皆被隱藏則整個 <url> 移除。
+     *
+     * 沿用 PRO 的 sitemap 過濾器契約（供 Multiple Domains 等外掛掛載）：
+     * - trp_filter_url_sitemap_before_output（前處理 $url 資料）
+     * - trp_add_language_url_to_sitemap（逐語言決定是否納入）
+     * - trp_xml_sitemap_output_for_url（最終輸出；Multiple Domains 以此移除跨網域 <url>）
+     *
+     * @param string               $output SEO 外掛產生的單一 <url> XML 區塊
+     * @param array<string, mixed> $url    URL 資料（loc／mod／images…）
      */
-    private function inject_alternates( string $output, string $loc ): string {
+    private function inject_alternates( string $output, array $url ): string {
+        $loc = (string) ( $url['loc'] ?? '' );
         if ( '' === $output || '' === $loc ) {
             return $output;
         }
 
-        $post_id  = self::resolve_post_id( $loc );
         $settings = YSTPAddonsTP::settings();
-        $default  = YSTPAddonsTP::default_language();
-        $publish  = YSTPAddonsTP::published_language_codes();
+
+        // 輸出前允許外掛調整 URL 資料（比照 PRO；loc 可能被改寫）
+        $url = apply_filters( 'trp_filter_url_sitemap_before_output', $url );
+        $url = is_array( $url ) ? $url : [];
+        $loc = (string) ( $url['loc'] ?? '' );
+        if ( '' === $loc ) {
+            return $output;
+        }
+
+        $post_id = self::resolve_post_id( $loc );
+        $default = YSTPAddonsTP::default_language();
+        $publish = YSTPAddonsTP::published_language_codes();
 
         // 原 <loc> 對應語言：一般為預設語言；若「預設語言使用子目錄」且首個發佈語言非預設，
         // SEO 外掛產生的 <loc> 會是首個發佈語言（比照 PRO）。可由 filter 覆寫（多網域外掛用）。
@@ -221,17 +237,21 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
             : $default;
         $original_language = (string) apply_filters( 'trp_sitemap_url_original_language', $original_language, $loc, $settings );
 
-        // 收集「未被內容規則隱藏」的語言（PRO 沒有此排除，為本外掛獨有）
+        // 收集要納入的語言：外掛 filter（比照 PRO，如 Multiple Domains 的 AIOSEO 過濾）
+        // 與「內容語言規則」隱藏排除（本外掛獨有）皆在此套用
         $langs = [];
         foreach ( $publish as $code ) {
+            if ( ! apply_filters( 'trp_add_language_url_to_sitemap', true, $code, $url, $output ) ) {
+                continue;
+            }
             if ( $post_id && self::is_hidden_in_language( $post_id, $code ) ) {
                 continue;
             }
             $langs[] = $code;
         }
-        // 全部語言皆被隱藏 → 從 sitemap 移除整個 <url>
+        // 全部語言皆被排除／隱藏 → 從 sitemap 移除整個 <url>
         if ( empty( $langs ) ) {
-            return '';
+            return (string) apply_filters( 'trp_xml_sitemap_output_for_url', '', $output, $settings, '', '', $url );
         }
 
         $add_country = (bool) apply_filters( 'trp_add_country_hreflang_tags', true );
@@ -304,28 +324,29 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
 
         // 原始語言（原 <loc>）被內容規則隱藏 → 不輸出原 <url>，只保留可見語言的獨立條目
         if ( ! in_array( $original_language, $langs, true ) ) {
-            return $all_lang_urls;
+            return (string) apply_filters( 'trp_xml_sitemap_output_for_url', $all_lang_urls, $output, $settings, $alternate, $all_lang_urls, $url );
         }
 
-        // 無 alternate 也無其他語言條目 → 無事可做，原樣返回
         if ( '' === $alternate && '' === $all_lang_urls ) {
-            return $output;
+            // 無 alternate 也無其他語言條目 → 內容不變，但仍走最終過濾器（比照 PRO 單一出口）
+            $new_output = $output;
+        } else {
+            // 原始語言可見：於原 <url> 的 </url> 前插入 alternate，其後接各語言獨立條目
+            $new_output = str_replace( '</url>', $alternate . "\t</url>\n" . $all_lang_urls, $output );
+
+            // 子目錄預設語言／多網域：原 <loc> 需改寫為 original_language 的網址（比照 PRO；找不到則原樣）
+            $translated_loc = YSTPAddonsTP::url_for_language( $original_language, $loc );
+            if ( '' !== $translated_loc && $translated_loc !== $loc ) {
+                $new_output = str_replace(
+                    '<loc>' . $loc . '</loc>',
+                    '<loc>' . esc_url( $translated_loc ) . '</loc>',
+                    $new_output
+                );
+            }
         }
 
-        // 原始語言可見：於原 <url> 的 </url> 前插入 alternate，其後接各語言獨立條目
-        $new_output = str_replace( '</url>', $alternate . "\t</url>\n" . $all_lang_urls, $output );
-
-        // 子目錄預設語言／多網域：原 <loc> 需改寫為 original_language 的網址（比照 PRO；找不到則原樣）
-        $translated_loc = YSTPAddonsTP::url_for_language( $original_language, $loc );
-        if ( '' !== $translated_loc && $translated_loc !== $loc ) {
-            $new_output = str_replace(
-                '<loc>' . $loc . '</loc>',
-                '<loc>' . esc_url( $translated_loc ) . '</loc>',
-                $new_output
-            );
-        }
-
-        return $new_output;
+        // 最終輸出過濾器（比照 PRO；Multiple Domains 以此移除跨網域 <url> 區塊）
+        return (string) apply_filters( 'trp_xml_sitemap_output_for_url', $new_output, $output, $settings, $alternate, $all_lang_urls, $url );
     }
 
     /** 產生單一 <xhtml:link> alternate 節點 */

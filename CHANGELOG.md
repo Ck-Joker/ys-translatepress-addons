@@ -2,6 +2,15 @@
 
 本檔案記錄所有重要變更，格式依循 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.14.3] - 2026-07-16 — 多語 sitemap 接回 TranslatePress 的過濾器契約（多網域相容）
+
+### 修正
+- **多語 sitemap 未沿用 TranslatePress 的 sitemap 過濾器**，使「每語言一個網域」（Multiple Domains 類型外掛）等依賴這些過濾器的整合無法作用——例如無法移除跨網域的 `<url>` 條目。現已比照 TranslatePress 的 sitemap 流程接回：
+  - `trp_filter_url_sitemap_before_output`：輸出前允許外掛調整 URL 資料。
+  - `trp_add_language_url_to_sitemap`：逐語言決定是否納入 sitemap。
+  - `trp_xml_sitemap_output_for_url`：最終輸出過濾（所有輸出路徑統一經過，包括本外掛獨有的「全語言隱藏」情境）。
+- 單一網域站台（未使用上述整合）不受影響：本版 sitemap 輸出與 v0.14.2 完全相同。
+
 ## [0.14.2] - 2026-07-16 — 修正：關閉 hreflang 標籤時 sitemap 語言條目與隱藏排除失效
 
 ### 修正
