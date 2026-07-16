@@ -32,6 +32,17 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         // 類型層級規則存於設定表，存檔後需失效隱藏清單快取（管理端與前台皆掛）
         add_action( 'ys_tp_settings_saved', [ $this, 'on_settings_saved' ] );
 
+        // 逐篇規則 meta 的任何變更(含 wp-cli / 程式化 update_post_meta,不經後台表單)與刪文
+        // → 失效隱藏清單快取。save_meta 的 flush 只涵蓋後台表單提交;
+        //   曾發生程式化批次設定規則後 transient 殘留舊值、規則整批不生效(2026-07-16)。
+        add_action( 'added_post_meta', [ $this, 'on_meta_change' ], 10, 3 );
+        add_action( 'updated_post_meta', [ $this, 'on_meta_change' ], 10, 3 );
+        add_action( 'deleted_post_meta', [ $this, 'on_meta_change' ], 10, 3 );
+        // 刪文必須掛 before_delete_post：core 刪文以 delete_metadata_by_mid 逐筆清 meta
+        // （觸發 deleted_postmeta 而非 deleted_post_meta），到 deleted_post 時 meta 已不在，
+        // metadata_exists 恆 false 而失去兜底（dev-ebs 實證）。
+        add_action( 'before_delete_post', [ $this, 'on_post_delete' ] );
+
         if ( is_admin() ) {
             add_action( 'add_meta_boxes', [ $this, 'register_meta_box' ] );
             add_action( 'save_post', [ $this, 'save_meta' ], 10, 2 );
@@ -541,6 +552,28 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         $hidden = array_values( array_unique( array_map( 'intval', $hidden ) ) );
         set_transient( $cache_key, $hidden, DAY_IN_SECONDS );
         return $hidden;
+    }
+
+    /**
+     * 逐篇規則 meta 變更(added/updated/deleted_post_meta)→ 失效隱藏清單快取
+     *
+     * @param int|int[] $meta_id  Meta ID(deleted 時為陣列)。
+     * @param int       $post_id  Post ID。
+     * @param string    $meta_key Meta key。
+     */
+    public function on_meta_change( $meta_id, $post_id, $meta_key ): void {
+        if ( self::META_MODE === $meta_key || self::META_LIST === $meta_key ) {
+            $this->flush_cache();
+        }
+    }
+
+    /**
+     * 刪文（before_delete_post，meta 尚在）→ 若該文有逐篇規則，失效隱藏清單快取
+     */
+    public function on_post_delete( $post_id ): void {
+        if ( metadata_exists( 'post', (int) $post_id, self::META_MODE ) ) {
+            $this->flush_cache();
+        }
     }
 
     /**

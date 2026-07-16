@@ -2,6 +2,12 @@
 
 本檔案記錄所有重要變更，格式依循 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.14.4] - 2026-07-16 — ContentRules 隱藏清單快取失效補洞（程式化 meta 變更／刪文）
+
+### 修正
+- **多語顯示規則的隱藏清單快取（`ys_tp_hidden_*` transient）在「逐篇規則 meta 被程式化變更」時不會失效**：`save_meta` 的 flush 只涵蓋後台表單提交；以 wp-cli／`update_post_meta` 批次設定規則後，前台一直沿用舊快取，導致規則整批不生效（dev-ebs 實際發生：14 筆「只在 zh_TW」規則因殘留舊值 `[999]` 全數失效，英文站仍列出中文限定內容）。
+- 補掛 `added_post_meta`／`updated_post_meta`／`deleted_post_meta`（限 `_ys_tp_content_lang_mode`／`_ys_tp_content_lang_list`）與刪文（該文帶規則時）→ 一律 `flush_cache()`。刪文掛於 `before_delete_post`：WordPress 刪文流程會先逐筆清除 meta（觸發的是 `deleted_postmeta` 而非 `deleted_post_meta`），到 `deleted_post` 時 meta 已不存在、無從判斷該文是否帶規則（dev-ebs 實證）。
+
 ## [0.14.3] - 2026-07-16 — 多語 sitemap 接回 TranslatePress 的過濾器契約（多網域相容）
 
 ### 修正
