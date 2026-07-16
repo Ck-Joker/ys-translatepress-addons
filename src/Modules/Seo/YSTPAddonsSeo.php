@@ -294,11 +294,9 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
             }
         }
 
-        if ( '' === $alternate ) {
-            return $output;
-        }
-
         // 組出各語言獨立 <url>（每筆尾端補上相同 alternate + 收尾）
+        // 注意：hreflang 開關全關（$alternate 為空）時仍須輸出各語言條目並套用
+        // 隱藏規則（比照 PRO——條目與 hreflang 是兩件事），不可提前返回。
         $all_lang_urls = '';
         foreach ( $other_lang_urls as $u ) {
             $all_lang_urls .= $u . $alternate . "\t</url>\n";
@@ -307,6 +305,11 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
         // 原始語言（原 <loc>）被內容規則隱藏 → 不輸出原 <url>，只保留可見語言的獨立條目
         if ( ! in_array( $original_language, $langs, true ) ) {
             return $all_lang_urls;
+        }
+
+        // 無 alternate 也無其他語言條目 → 無事可做，原樣返回
+        if ( '' === $alternate && '' === $all_lang_urls ) {
+            return $output;
         }
 
         // 原始語言可見：於原 <url> 的 </url> 前插入 alternate，其後接各語言獨立條目
