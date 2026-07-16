@@ -29,9 +29,65 @@ class YSTPAddonsMenuLanguage implements YSTPAddonsModuleInterface {
             add_action( 'wp_nav_menu_item_custom_fields', [ $this, 'render_fields' ], 10, 2 );
             add_action( 'wp_update_nav_menu_item', [ $this, 'save_fields' ], 10, 3 );
             add_action( 'admin_print_footer_scripts-nav-menus.php', [ $this, 'inline_js' ] );
+            // 選單項目標題列的語言小國旗（比照內容列表「語言」欄視覺）
+            add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_flags' ] );
+            add_action( 'admin_head-nav-menus.php', [ $this, 'flags_css' ] );
         } else {
             add_filter( 'wp_get_nav_menu_items', [ $this, 'filter_items' ], 20, 3 );
         }
+    }
+
+    /**
+     * 「外觀 → 選單」載入項目標題列小國旗腳本
+     *
+     * 每個選單項目的收合標題列顯示各語言旗幟：該語言會顯示＝彩色＋綠勾、
+     * 被隱藏＝灰階（與內容列表「語言」欄一致），免展開逐項檢查。
+     *
+     * @param string $hook 當前後台頁 hook
+     */
+    public function enqueue_flags( $hook ): void {
+        if ( 'nav-menus.php' !== $hook ) {
+            return;
+        }
+        $languages = YSTPAddonsTP::languages();
+        if ( count( $languages ) < 2 ) {
+            return;
+        }
+
+        $config = [ 'languages' => [] ];
+        foreach ( $languages as $code => $name ) {
+            $config['languages'][ $code ] = [
+                'name' => $name . '（' . __( '顯示', 'ys-translatepress-addons' ) . '）',
+                'off'  => $name . '（' . __( '不顯示', 'ys-translatepress-addons' ) . '）',
+                'flag' => YSTPAddonsTP::flag_url( $code ),
+            ];
+        }
+
+        wp_enqueue_script(
+            'ys-tp-menu-flags',
+            YS_TP_PLUGIN_URL . 'assets/js/ys-tp-menu-flags.js',
+            [ 'jquery' ],
+            YS_TP_VERSION,
+            true
+        );
+        wp_localize_script( 'ys-tp-menu-flags', 'ysTPMenuFlags', $config );
+    }
+
+    /**
+     * 選單項目標題列小國旗樣式（僅 nav-menus.php）
+     */
+    public function flags_css(): void {
+        if ( count( YSTPAddonsTP::languages() ) < 2 ) {
+            return;
+        }
+        echo '<style>'
+            . '.ys-tp-menu-flags{display:inline-flex;gap:6px;margin-left:10px;align-items:center;vertical-align:middle;}'
+            . '.ys-tp-mf{position:relative;display:inline-flex;line-height:0;}'
+            . '.ys-tp-mf img{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.12);display:block;}'
+            . '.ys-tp-mf.is-off img{filter:grayscale(1);opacity:.35;}'
+            . '.ys-tp-mf-ck{position:absolute;right:-4px;bottom:-4px;width:10px;height:10px;background:#46b450;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.2);}'
+            . '.ys-tp-mf-ck::after{content:"";position:absolute;left:2.5px;top:1px;width:2.5px;height:4.5px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);}'
+            . '</style>';
     }
 
     /**
@@ -70,7 +126,14 @@ class YSTPAddonsMenuLanguage implements YSTPAddonsModuleInterface {
         $saved = is_array( $saved ) ? $saved : [];
         $all   = empty( $saved ); // 未設定 = 所有語言
 
+        // 標題列小國旗的初始有效狀態：本外掛未設定時沿用既有（PRO）欄位（與前台 filter_items 一致）
+        $effective = $saved ?: $this->pro_menu_languages( (int) $item_id );
+
         wp_nonce_field( 'ys_tp_menu_' . $item_id, 'ys_tp_menu_nonce_' . $item_id );
+        printf(
+            '<span class="ys-tp-menu-langdata" data-langs="%s" hidden></span>',
+            esc_attr( implode( ',', $effective ) )
+        );
         ?>
         <p class="field-ys-tp-menu-languages description description-wide">
             <label><strong><?php esc_html_e( '顯示語言（多語增強）', 'ys-translatepress-addons' ); ?></strong></label><br />
