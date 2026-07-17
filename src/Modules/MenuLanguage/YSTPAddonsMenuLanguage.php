@@ -124,10 +124,13 @@ class YSTPAddonsMenuLanguage implements YSTPAddonsModuleInterface {
 
         $saved = get_post_meta( $item_id, self::META_KEY, true );
         $saved = is_array( $saved ) ? $saved : [];
-        $all   = empty( $saved ); // 未設定 = 所有語言
 
-        // 標題列小國旗的初始有效狀態：本外掛未設定時沿用既有（PRO）欄位（與前台 filter_items 一致）
+        // 有效狀態：本外掛未設定時沿用既有（PRO）選單語言欄位——與前台 filter_items 一致。
+        // 🔴 checkbox 必須反映「有效狀態」而非只看本外掛 meta：否則沿用中的項目會顯示
+        // 「所有語言」勾選（與前台實際過濾不符），標題列旗幟（讀 checkbox）也跟著錯。
+        // 使用者儲存選單時會將沿用值寫入本外掛 meta（顯性化，與 slug 欄位預填慣例一致）。
         $effective = $saved ?: $this->pro_menu_languages( (int) $item_id );
+        $all       = empty( $effective ); // 未設定＝所有語言
 
         wp_nonce_field( 'ys_tp_menu_' . $item_id, 'ys_tp_menu_nonce_' . $item_id );
         printf(
@@ -148,7 +151,7 @@ class YSTPAddonsMenuLanguage implements YSTPAddonsModuleInterface {
                         <input type="checkbox"
                             name="ys_tp_menu_languages[<?php echo esc_attr( (string) $item_id ); ?>][]"
                             value="<?php echo esc_attr( $code ); ?>"
-                            <?php checked( ! $all && in_array( $code, $saved, true ) ); ?> />
+                            <?php checked( ! $all && in_array( $code, $effective, true ) ); ?> />
                         <?php echo esc_html( $name ); ?>
                     </label>
                 <?php endforeach; ?>
