@@ -249,20 +249,23 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
             return;
         }
         wp_nonce_field( 'ys_tp_content_quickedit', 'ys_tp_content_qe_nonce' );
+        // 緊湊版：模式用下拉（欄位名與值同 radio 版，儲存端 save_meta 零改動）、語言勾選同列展開
         ?>
         <fieldset class="inline-edit-col-right ys-tp-qe">
             <div class="inline-edit-col">
-                <span class="title inline-edit-categories-label"><?php esc_html_e( '多語顯示', 'ys-translatepress-addons' ); ?></span>
-                <ul class="ys-tp-qe-modes" style="margin:4px 0 6px;">
-                    <li><label><input type="radio" name="ys_tp_cr_mode" value="all" checked /> <?php esc_html_e( '所有語言顯示', 'ys-translatepress-addons' ); ?></label></li>
-                    <li><label><input type="radio" name="ys_tp_cr_mode" value="exclude" /> <?php esc_html_e( '排除以下語言', 'ys-translatepress-addons' ); ?></label></li>
-                    <li><label><input type="radio" name="ys_tp_cr_mode" value="include" /> <?php esc_html_e( '只在以下語言顯示', 'ys-translatepress-addons' ); ?></label></li>
-                </ul>
-                <span class="ys-tp-qe-langs" style="display:none;padding-left:2px;">
-                    <?php foreach ( $languages as $code => $name ) : ?>
-                        <label style="display:inline-block;margin:0 10px 4px 0;"><input type="checkbox" name="ys_tp_cr_list[]" value="<?php echo esc_attr( $code ); ?>" /> <?php echo esc_html( $name ); ?></label>
-                    <?php endforeach; ?>
-                </span>
+                <label class="inline-edit-group ys-tp-qe-row" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;">
+                    <span class="title" style="width:auto;margin:0;"><?php esc_html_e( '多語顯示', 'ys-translatepress-addons' ); ?></span>
+                    <select name="ys_tp_cr_mode">
+                        <option value="all"><?php esc_html_e( '所有語言顯示', 'ys-translatepress-addons' ); ?></option>
+                        <option value="exclude"><?php esc_html_e( '排除以下語言', 'ys-translatepress-addons' ); ?></option>
+                        <option value="include"><?php esc_html_e( '只在以下語言顯示', 'ys-translatepress-addons' ); ?></option>
+                    </select>
+                    <span class="ys-tp-qe-langs" style="display:none;">
+                        <?php foreach ( $languages as $code => $name ) : ?>
+                            <label style="display:inline-block;margin:0 10px 0 0;vertical-align:middle;"><input type="checkbox" name="ys_tp_cr_list[]" value="<?php echo esc_attr( $code ); ?>" /> <?php echo esc_html( $name ); ?></label>
+                        <?php endforeach; ?>
+                    </span>
+                </label>
             </div>
         </fieldset>
         <?php
