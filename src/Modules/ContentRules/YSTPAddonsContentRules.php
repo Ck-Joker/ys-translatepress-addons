@@ -29,6 +29,9 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
     private static bool $resolving = false;
 
     public function boot(): void {
+        // 分類（taxonomy term）層級的語言規則（列表國旗／編輯欄位／分類頁重導／清單排除）
+        ( new YSTPAddonsTermRules( $this ) )->boot();
+
         // 類型層級規則存於設定表，存檔後需失效隱藏清單快取（管理端與前台皆掛）
         add_action( 'ys_tp_settings_saved', [ $this, 'on_settings_saved' ] );
 
@@ -59,8 +62,8 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
 
     /* ───────────── 設定讀取 ───────────── */
 
-    /** @return string[] 套用規則的 post types（依各別 content_pt_{type} 設定） */
-    private function post_types(): array {
+    /** @return string[] 套用規則的 post types（依各別 content_pt_{type} 設定；分類規則等亦以此為準） */
+    public static function applied_post_types(): array {
         $candidates = get_post_types( [ 'public' => true ], 'objects' );
         unset( $candidates['attachment'] );
 
@@ -71,6 +74,11 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
             }
         }
         return $result ?: [ 'post', 'page' ];
+    }
+
+    /** 舊介面（內部沿用） */
+    private function post_types(): array {
+        return self::applied_post_types();
     }
 
     /**
@@ -438,15 +446,20 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         if ( ! $screen || 'edit' !== $screen->base || ! in_array( $screen->post_type, $this->post_types(), true ) ) {
             return;
         }
-        echo '<style>'
-            . '.column-ys_tp_langs{width:118px;}'
+        echo '<style>' . self::lang_column_css_rules() . '</style>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    }
+
+    /**
+     * 語言欄樣式規則（文章列表與分類列表共用）
+     */
+    public static function lang_column_css_rules(): string {
+        return '.column-ys_tp_langs{width:118px;}'
             . '.ys-tp-langcol{display:inline-flex;flex-wrap:wrap;gap:7px;align-items:center;}'
             . '.ys-tp-lf{position:relative;display:inline-flex;line-height:0;}'
             . '.ys-tp-lf img{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.12);}'
             . '.ys-tp-lf.is-off img{filter:grayscale(1);opacity:.35;}'
             . '.ys-tp-lf-ck{position:absolute;right:-5px;bottom:-5px;width:12px;height:12px;background:#46b450;border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.2);}'
-            . '.ys-tp-lf-ck::after{content:"";position:absolute;left:3.5px;top:1.5px;width:3px;height:5px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);}'
-            . '</style>';
+            . '.ys-tp-lf-ck::after{content:"";position:absolute;left:3.5px;top:1.5px;width:3px;height:5px;border:solid #fff;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);}';
     }
 
     /* ───────────── 隱藏判斷 ───────────── */
@@ -701,6 +714,15 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         }
 
         $this->redirect_for( $post->post_type, $lang, $post );
+    }
+
+    /**
+     * 公開：依某內容類型的重導原則執行重導（供分類規則等重用）
+     *
+     * 被隱藏的分類頁沒有「上層頁面」概念，直接走該類型的 fallback 階梯。
+     */
+    public function redirect_for_type( string $post_type, string $lang ): void {
+        $this->redirect_for( $post_type, $lang, null );
     }
 
     /**

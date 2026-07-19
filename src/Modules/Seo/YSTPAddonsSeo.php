@@ -227,6 +227,7 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
         }
 
         $post_id = self::resolve_post_id( $loc );
+        $term_id = $post_id ? 0 : self::resolve_term_id( $loc );
         $default = YSTPAddonsTP::default_language();
         $publish = YSTPAddonsTP::published_language_codes();
 
@@ -238,13 +239,16 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
         $original_language = (string) apply_filters( 'trp_sitemap_url_original_language', $original_language, $loc, $settings );
 
         // 收集要納入的語言：外掛 filter（比照 PRO，如 Multiple Domains 的 AIOSEO 過濾）
-        // 與「內容語言規則」隱藏排除（本外掛獨有）皆在此套用
+        // 與「內容語言規則」隱藏排除（本外掛獨有；內容與分類頁皆適用）皆在此套用
         $langs = [];
         foreach ( $publish as $code ) {
             if ( ! apply_filters( 'trp_add_language_url_to_sitemap', true, $code, $url, $output ) ) {
                 continue;
             }
             if ( $post_id && self::is_hidden_in_language( $post_id, $code ) ) {
+                continue;
+            }
+            if ( $term_id && self::is_term_hidden_in_language( $term_id, $code ) ) {
                 continue;
             }
             $langs[] = $code;
@@ -398,5 +402,41 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
             return false;
         }
         return \YangSheep\TPAddons\Modules\ContentRules\YSTPAddonsContentRules::is_hidden( $post_id, $lang );
+    }
+
+    /**
+     * 某分類在某語言是否被「內容語言規則」隱藏（模組未啟用則永不隱藏）
+     */
+    private static function is_term_hidden_in_language( int $term_id, string $lang ): bool {
+        if ( ! \YangSheep\TPAddons\Support\YSTPAddonsModules::is_enabled( 'content_rules' ) ) {
+            return false;
+        }
+        return \YangSheep\TPAddons\Modules\ContentRules\YSTPAddonsTermRules::is_hidden( $term_id, $lang );
+    }
+
+    /**
+     * 將 sitemap URL 解析為分類 term ID（無對應則 0）
+     *
+     * 對照表為「套用內容語言規則的 taxonomies」全部 term 的網址，於單一 sitemap
+     * 請求內以 static 快取（分類數量級小，成本可忽略）。
+     */
+    private static function resolve_term_id( string $loc ): int {
+        static $map = null;
+        if ( null === $map ) {
+            $map = [];
+            if ( \YangSheep\TPAddons\Support\YSTPAddonsModules::is_enabled( 'content_rules' ) ) {
+                $taxes = \YangSheep\TPAddons\Modules\ContentRules\YSTPAddonsTermRules::applied_taxonomies();
+                foreach ( $taxes as $tax ) {
+                    $ids = get_terms( [ 'taxonomy' => $tax, 'hide_empty' => false, 'fields' => 'ids' ] );
+                    foreach ( (array) $ids as $tid ) {
+                        $link = get_term_link( (int) $tid, $tax );
+                        if ( is_string( $link ) && '' !== $link ) {
+                            $map[ untrailingslashit( $link ) ] = (int) $tid;
+                        }
+                    }
+                }
+            }
+        }
+        return $map[ untrailingslashit( $loc ) ] ?? 0;
     }
 }

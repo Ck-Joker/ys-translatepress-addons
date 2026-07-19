@@ -92,6 +92,7 @@ $render_fb = static function ( string $setting, string $current, bool $with_inhe
             <ul style="margin:0 0 4px 18px;line-height:1.9;">
                 <li><strong>列表排除</strong>：切換到被隱藏的語言時，該內容自動從文章列表／封存／搜尋結果移除。</li>
                 <li><strong>智慧重導（階梯式）</strong>：訪客直接造訪被隱藏的單頁時，依序嘗試 ① 跳到最近一個「該語言可見」的<strong>上層</strong> → ② 該<strong>內容類型</strong>的對應頁 → ③ <strong>全域預設跳轉頁</strong>；目標皆為<strong>當前語言</strong>版本。可選擇 301／302／404 處理方式。</li>
+                <li><strong>分類同步支援</strong>：套用類型的<strong>分類</strong>也可在分類列表（語言欄／快速編輯）與編輯頁設定顯示語言；被隱藏語言的分類頁依<strong>所屬內容類型</strong>的重導設定跳轉，前台分類清單與 sitemap 一併排除。</li>
             </ul>
         </div>
     </div>

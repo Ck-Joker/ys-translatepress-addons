@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: YS TranslatePress Addons 0.15.2\n"
+"Project-Id-Version: YS TranslatePress Addons 0.16.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ys-translatepress-addons\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-16T05:25:39+00:00\n"
+"POT-Creation-Date: 2026-07-19T17:45:08+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ys-translatepress-addons\n"
@@ -183,58 +183,71 @@ msgstr ""
 msgid "找不到翻譯供應商"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:108
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:127
 msgid "多語顯示規則"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:127
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:246
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:146
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:267
+#: src/Modules/ContentRules/YSTPAddonsTermRules.php:267
 msgid "所有語言顯示"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:128
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:247
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:147
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:268
+#: src/Modules/ContentRules/YSTPAddonsTermRules.php:268
 msgid "排除以下語言"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:129
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:248
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:148
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:269
+#: src/Modules/ContentRules/YSTPAddonsTermRules.php:269
 msgid "只在以下語言顯示"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:139
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:158
 msgid "切換到被隱藏的語言時，此內容會從列表移除；若直接造訪則重導至設定的對應頁。"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:244
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:265
+#: src/Modules/ContentRules/YSTPAddonsTermRules.php:294
+#: src/Modules/ContentRules/YSTPAddonsTermRules.php:326
 msgid "多語顯示"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:298
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:320
 msgid "全部語言"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:299
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:305
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:321
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:327
 msgid "顯示於"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:308
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:314
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:330
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:336
 msgid "隱藏於"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:370
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:375
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:392
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:397
 msgid "語言"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:396
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:418
+#: src/Modules/ContentRules/YSTPAddonsTermRules.php:223
+#: src/Modules/MenuLanguage/YSTPAddonsMenuLanguage.php:61
 msgid "不顯示"
 msgstr ""
 
-#: src/Modules/ContentRules/YSTPAddonsContentRules.php:397
+#: src/Modules/ContentRules/YSTPAddonsContentRules.php:419
+#: src/Modules/ContentRules/YSTPAddonsTermRules.php:224
+#: src/Modules/MenuLanguage/YSTPAddonsMenuLanguage.php:60
 msgid "顯示"
+msgstr ""
+
+#: src/Modules/ContentRules/YSTPAddonsTermRules.php:300
+msgid "切換到被隱藏的語言時，此分類會從分類清單移除；直接造訪分類頁則依所屬內容類型的重導設定跳轉。"
 msgstr ""
 
 #: src/Modules/ImportExport/YSTPAddonsImportExport.php:108
@@ -266,11 +279,11 @@ msgstr ""
 msgid "選擇你的語言"
 msgstr ""
 
-#: src/Modules/MenuLanguage/YSTPAddonsMenuLanguage.php:76
+#: src/Modules/MenuLanguage/YSTPAddonsMenuLanguage.php:142
 msgid "顯示語言（多語增強）"
 msgstr ""
 
-#: src/Modules/MenuLanguage/YSTPAddonsMenuLanguage.php:80
+#: src/Modules/MenuLanguage/YSTPAddonsMenuLanguage.php:146
 msgid "所有語言"
 msgstr ""
 
@@ -594,67 +607,67 @@ msgstr ""
 msgid "指定頁面（該語言版本）"
 msgstr ""
 
-#: templates/admin/content_rules.php:103
+#: templates/admin/content_rules.php:104
 msgid "列表顯示語言欄"
 msgstr ""
 
-#: templates/admin/content_rules.php:108
+#: templates/admin/content_rules.php:109
 msgid "在文章／頁面／自訂內容的後台列表加入「語言」欄，以小國旗＋綠勾顯示各語言是否顯示（被排除語言呈灰階）。"
 msgstr ""
 
-#: templates/admin/content_rules.php:112
+#: templates/admin/content_rules.php:113
 msgid "啟用智慧重導"
 msgstr ""
 
-#: templates/admin/content_rules.php:117
+#: templates/admin/content_rules.php:118
 msgid "關閉後，被隱藏的單頁仍可直接造訪（僅從列表排除）。"
 msgstr ""
 
-#: templates/admin/content_rules.php:121
+#: templates/admin/content_rules.php:122
 msgid "重導處理方式"
 msgstr ""
 
-#: templates/admin/content_rules.php:123
+#: templates/admin/content_rules.php:124
 msgid "302 暫時重導"
 msgstr ""
 
-#: templates/admin/content_rules.php:124
+#: templates/admin/content_rules.php:125
 msgid "301 永久重導（建議：該語言永久無此內容）"
 msgstr ""
 
-#: templates/admin/content_rules.php:125
+#: templates/admin/content_rules.php:126
 msgid "404 找不到頁面（不重導，讓搜尋引擎移除索引）"
 msgstr ""
 
-#: templates/admin/content_rules.php:130
+#: templates/admin/content_rules.php:131
 msgid "優先跳轉到上層"
 msgstr ""
 
-#: templates/admin/content_rules.php:135
+#: templates/admin/content_rules.php:136
 msgid "開啟後，會先沿階層往上找最近一個「該語言可見」的上層（頁面／階層式內容）並跳過去；找不到才用下方各類型的 fallback。"
 msgstr ""
 
-#: templates/admin/content_rules.php:139
+#: templates/admin/content_rules.php:140
 msgid "各內容類型設定"
 msgstr ""
 
-#: templates/admin/content_rules.php:140
+#: templates/admin/content_rules.php:141
 msgid "每個內容類型可各自：是否套用規則、整個類型在哪些語言隱藏（一鍵關閉整個類型的多語顯示）、以及被隱藏時重導到哪。"
 msgstr ""
 
-#: templates/admin/content_rules.php:159
+#: templates/admin/content_rules.php:160
 msgid "整個類型隱藏於"
 msgstr ""
 
-#: templates/admin/content_rules.php:173
+#: templates/admin/content_rules.php:174
 msgid "被隱藏時重導至"
 msgstr ""
 
-#: templates/admin/content_rules.php:183
+#: templates/admin/content_rules.php:184
 msgid "全域預設跳轉頁"
 msgstr ""
 
-#: templates/admin/content_rules.php:185
+#: templates/admin/content_rules.php:186
 msgid "上層找不到、且該類型設為「未指定」時，最後跳到這裡。"
 msgstr ""
 
