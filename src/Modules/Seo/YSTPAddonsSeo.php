@@ -427,7 +427,8 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
             if ( \YangSheep\TPAddons\Support\YSTPAddonsModules::is_enabled( 'content_rules' ) ) {
                 $taxes = \YangSheep\TPAddons\Modules\ContentRules\YSTPAddonsTermRules::applied_taxonomies();
                 foreach ( $taxes as $tax ) {
-                    $ids = get_terms( [ 'taxonomy' => $tax, 'hide_empty' => false, 'fields' => 'ids' ] );
+                    // ys_tp_no_filter：內部查詢，永不套用前台隱藏排除（對照表須含隱藏 term 才能判斷）
+                    $ids = get_terms( [ 'taxonomy' => $tax, 'hide_empty' => false, 'fields' => 'ids', 'ys_tp_no_filter' => true ] );
                     foreach ( (array) $ids as $tid ) {
                         $link = get_term_link( (int) $tid, $tax );
                         if ( is_string( $link ) && '' !== $link ) {

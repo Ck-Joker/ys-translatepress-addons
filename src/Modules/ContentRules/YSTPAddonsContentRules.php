@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 
 class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
 
-    public const META_MODE = '_ys_tp_content_lang_mode';  // all | exclude | include
+    public const META_MODE = '_ys_tp_content_lang_mode';  // all | exclude | include（無 meta＝inherit 跟隨類型）
     public const META_LIST = '_ys_tp_content_lang_list';  // array of language codes
     private const CACHE_PREFIX = 'ys_tp_hidden_';
 
@@ -73,7 +73,9 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
                 $result[] = $pt->name;
             }
         }
-        return $result ?: [ 'post', 'page' ];
+        // 使用者可將所有類型關閉＝規則整體停用（不強制回退 post／page；
+        // 預設值本身已由 pt_default() 提供，首次安裝不會是空集合）
+        return $result;
     }
 
     /** 舊介面（內部沿用） */
@@ -135,7 +137,7 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
 
     public function render_meta_box( $post ): void {
         $languages = YSTPAddonsTP::languages();
-        $mode      = get_post_meta( $post->ID, self::META_MODE, true ) ?: 'all';
+        $mode      = get_post_meta( $post->ID, self::META_MODE, true ) ?: 'inherit'; // 無 meta＝跟隨類型
         $list      = get_post_meta( $post->ID, self::META_LIST, true );
         $list      = is_array( $list ) ? $list : [];
 
@@ -143,11 +145,12 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         ?>
         <div class="ys-tp-cr">
             <p style="margin:.2em 0 .6em;">
+                <label><input type="radio" name="ys_tp_cr_mode" value="inherit" <?php checked( $mode, 'inherit' ); ?> /> <?php esc_html_e( '跟隨內容類型設定', 'ys-translatepress-addons' ); ?></label><br />
                 <label><input type="radio" name="ys_tp_cr_mode" value="all" <?php checked( $mode, 'all' ); ?> /> <?php esc_html_e( '所有語言顯示', 'ys-translatepress-addons' ); ?></label><br />
                 <label><input type="radio" name="ys_tp_cr_mode" value="exclude" <?php checked( $mode, 'exclude' ); ?> /> <?php esc_html_e( '排除以下語言', 'ys-translatepress-addons' ); ?></label><br />
                 <label><input type="radio" name="ys_tp_cr_mode" value="include" <?php checked( $mode, 'include' ); ?> /> <?php esc_html_e( '只在以下語言顯示', 'ys-translatepress-addons' ); ?></label>
             </p>
-            <div class="ys-tp-cr-langs" style="<?php echo 'all' === $mode ? 'display:none;' : ''; ?>padding:6px 0 2px;border-top:1px solid #eee;">
+            <div class="ys-tp-cr-langs" style="<?php echo in_array( $mode, [ 'exclude', 'include' ], true ) ? '' : 'display:none;'; ?>padding:6px 0 2px;border-top:1px solid #eee;">
                 <?php foreach ( $languages as $code => $name ) : ?>
                     <label style="display:block;margin:3px 0;">
                         <input type="checkbox" name="ys_tp_cr_list[]" value="<?php echo esc_attr( $code ); ?>" <?php checked( in_array( $code, $list, true ) ); ?> />
@@ -155,7 +158,7 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
                     </label>
                 <?php endforeach; ?>
             </div>
-            <p class="description" style="margin-top:6px;"><?php esc_html_e( '切換到被隱藏的語言時，此內容會從列表移除；若直接造訪則重導至設定的對應頁。', 'ys-translatepress-addons' ); ?></p>
+            <p class="description" style="margin-top:6px;"><?php esc_html_e( '「所有語言顯示」可覆寫內容類型層級的隱藏設定。切換到被隱藏的語言時，此內容會從列表移除；若直接造訪則重導至設定的對應頁。', 'ys-translatepress-addons' ); ?></p>
         </div>
         <script>
         ( function () {
@@ -163,7 +166,8 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
             if ( ! box ) return;
             box.addEventListener( 'change', function ( e ) {
                 if ( e.target.name === 'ys_tp_cr_mode' ) {
-                    box.querySelector( '.ys-tp-cr-langs' ).style.display = ( e.target.value === 'all' ) ? 'none' : 'block';
+                    var show = ( e.target.value === 'exclude' || e.target.value === 'include' );
+                    box.querySelector( '.ys-tp-cr-langs' ).style.display = show ? 'block' : 'none';
                 }
             } );
         } )();
@@ -192,13 +196,18 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
             return;
         }
 
-        $mode = isset( $_POST['ys_tp_cr_mode'] ) ? sanitize_key( wp_unslash( $_POST['ys_tp_cr_mode'] ) ) : 'all';
-        if ( ! in_array( $mode, [ 'all', 'exclude', 'include' ], true ) ) {
-            $mode = 'all';
+        $mode = isset( $_POST['ys_tp_cr_mode'] ) ? sanitize_key( wp_unslash( $_POST['ys_tp_cr_mode'] ) ) : 'inherit';
+        if ( ! in_array( $mode, [ 'inherit', 'all', 'exclude', 'include' ], true ) ) {
+            $mode = 'inherit';
         }
 
-        if ( 'all' === $mode ) {
+        if ( 'inherit' === $mode ) {
+            // 跟隨內容類型 → 無逐篇 meta
             delete_post_meta( $post_id, self::META_MODE );
+            delete_post_meta( $post_id, self::META_LIST );
+        } elseif ( 'all' === $mode ) {
+            // 明確覆寫「所有語言顯示」→ 持久化 mode（可覆寫類型層級隱藏）
+            update_post_meta( $post_id, self::META_MODE, 'all' );
             delete_post_meta( $post_id, self::META_LIST );
         } else {
             $valid = array_keys( YSTPAddonsTP::languages() );
@@ -264,6 +273,7 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
                 <label class="inline-edit-group ys-tp-qe-row" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;">
                     <span class="title" style="width:auto;margin:0;"><?php esc_html_e( '多語顯示', 'ys-translatepress-addons' ); ?></span>
                     <select name="ys_tp_cr_mode">
+                        <option value="inherit"><?php esc_html_e( '跟隨內容類型設定', 'ys-translatepress-addons' ); ?></option>
                         <option value="all"><?php esc_html_e( '所有語言顯示', 'ys-translatepress-addons' ); ?></option>
                         <option value="exclude"><?php esc_html_e( '排除以下語言', 'ys-translatepress-addons' ); ?></option>
                         <option value="include"><?php esc_html_e( '只在以下語言顯示', 'ys-translatepress-addons' ); ?></option>
@@ -427,8 +437,8 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         }
         echo '</span>';
 
-        // 供「快速編輯」JS 讀取目前規則以預填
-        $mode = get_post_meta( (int) $post_id, self::META_MODE, true ) ?: 'all';
+        // 供「快速編輯」JS 讀取目前規則以預填（無 meta＝inherit 跟隨類型）
+        $mode = get_post_meta( (int) $post_id, self::META_MODE, true ) ?: 'inherit';
         $list = get_post_meta( (int) $post_id, self::META_LIST, true );
         $list = is_array( $list ) ? $list : [];
         printf(
@@ -465,17 +475,22 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
     /* ───────────── 隱藏判斷 ───────────── */
 
     /**
-     * 某內容在指定語言是否被隱藏
+     * 某內容在指定語言是否被隱藏（四態）
      *
-     * 優先序：逐篇規則（有設定時）覆寫類型層級預設；逐篇未設定則套用該類型的類型層級規則。
+     * - 無 meta（inherit）：跟隨該內容類型的類型層級規則
+     * - mode=all：明確覆寫為「所有語言顯示」——即使類型層級隱藏亦可見
+     * - mode=exclude／include：依逐篇規則
      */
     public static function is_hidden( int $post_id, string $lang ): bool {
         $mode = get_post_meta( $post_id, self::META_MODE, true );
-        if ( $mode && 'all' !== $mode ) {
+        if ( 'all' === $mode ) {
+            return false; // 明確覆寫：所有語言顯示
+        }
+        if ( in_array( $mode, [ 'exclude', 'include' ], true ) ) {
             $list = get_post_meta( $post_id, self::META_LIST, true );
             return self::eval_rule( (string) $mode, is_array( $list ) ? $list : [], $lang );
         }
-        // 逐篇未設定 → 套用該內容類型的類型層級規則
+        // 未設定（inherit）→ 套用該內容類型的類型層級規則
         return self::is_type_hidden( (string) get_post_type( $post_id ), $lang );
     }
 
@@ -530,9 +545,9 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
         $ruled  = [];
         foreach ( (array) $rows as $row ) {
             $pid           = (int) $row->post_id;
-            $ruled[ $pid ] = true;
+            $ruled[ $pid ] = true; // 有 meta＝有逐篇設定（含 all 覆寫）→ 不套類型層級
             $mode          = get_post_meta( $pid, self::META_MODE, true );
-            if ( $mode && 'all' !== $mode ) {
+            if ( in_array( $mode, [ 'exclude', 'include' ], true ) ) {
                 $list = get_post_meta( $pid, self::META_LIST, true );
                 if ( self::eval_rule( (string) $mode, is_array( $list ) ? $list : [], $lang ) ) {
                     $hidden[] = $pid;

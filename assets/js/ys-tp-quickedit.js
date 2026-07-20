@@ -20,7 +20,7 @@
         if ( ! $data.length || ! $edit.length ) {
             return;
         }
-        var mode = String( $data.attr( 'data-mode' ) || 'all' );
+        var mode = String( $data.attr( 'data-mode' ) || 'inherit' );
         var raw  = String( $data.attr( 'data-list' ) || '' );
         var list = raw ? raw.split( ',' ) : [];
 
@@ -28,7 +28,7 @@
         $edit.find( 'input[name="ys_tp_cr_list[]"]' ).each( function () {
             this.checked = ( list.indexOf( this.value ) >= 0 );
         } );
-        $edit.find( '.ys-tp-qe-langs' ).toggle( mode !== 'all' );
+        $edit.find( '.ys-tp-qe-langs' ).toggle( mode === 'exclude' || mode === 'include' );
     }
 
     // 文章列表
@@ -61,7 +61,7 @@
         if ( ! $scope.length ) {
             $scope = $( this ).closest( '.ys-tp-qe' );
         }
-        $scope.find( '.ys-tp-qe-langs' ).toggle( this.value !== 'all' );
+        $scope.find( '.ys-tp-qe-langs' ).toggle( this.value === 'exclude' || this.value === 'include' );
     } );
 
 } )( jQuery );
