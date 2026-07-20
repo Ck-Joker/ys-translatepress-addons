@@ -1,13 +1,21 @@
 # Changelog
 
-## [0.16.2] - 2026-07-28
-
-### Fixed
-
-- Stop the bundled YS Hub Client library from registering an invalid
-  WooCommerce HPOS declaration from its vendor path.
-
 本檔案記錄所有重要變更，格式依循 [Keep a Changelog](https://keepachangelog.com/)。
+
+## [0.17.0] - 2026-07-20 — 翻譯網址 slug 擴充：分類項目 slug ＋ 分類／內容類型基底
+
+### 新增
+- **分類項目也可設定各語言網址 slug**：在分類編輯畫面為每個語言填寫 slug（term meta），例如中文分類「新聞」在英文網址顯示為 `company-news`。
+- **網址基底 slug 可翻譯**（SEO 增強 → 翻譯網址 slug）：分類基底（如 `news-cat`、`category`）與內容類型基底（如 `products`、`news`）可逐項、逐語言設定。搭配上述兩項，`/news-cat/新聞/` 在英文可完整呈現為 `/en/news-category/company-news/`。
+- 唯一性檢查擴大到文章、分類與基底三者之間，避免不同對象在同一語言使用相同 slug 而反查錯誤。
+
+### 效能
+- **slug 對照表改為每語言快取**（transient）：原本逐路徑段落查詢資料庫，改為單次建表後快取；內容／分類存檔與基底設定變更時自動失效。既有其他 TranslatePress 多語外掛留下的 slug 資料一併納入對照表（沿用行為不變）。
+
+## [0.16.2] - 2026-07-28 — 修正：移除套件庫中無效的 HPOS 宣告
+
+### 修正
+- 內附的 YS Hub Client 套件庫不再從 vendor 路徑註冊無效的 WooCommerce HPOS 相容宣告。
 
 ## [0.16.1] - 2026-07-19 — 修正：四態顯示語意（可覆寫類型隱藏）＋分類排除不再影響 REST／sitemap
 

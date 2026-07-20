@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: YS TranslatePress Addons 0.16.2\n"
+"Project-Id-Version: YS TranslatePress Addons 0.17.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/ys-translatepress-addons\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-20T01:59:22+00:00\n"
+"POT-Creation-Date: 2026-07-20T04:22:03+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: ys-translatepress-addons\n"
@@ -293,18 +293,28 @@ msgstr ""
 msgid "所有語言"
 msgstr ""
 
-#: src/Modules/Seo/YSTPAddonsSlugTranslator.php:333
+#: src/Modules/Seo/YSTPAddonsSlugTranslator.php:584
 msgid "多語網址 slug（多語增強）"
 msgstr ""
 
 #. translators: %s: 原始 slug
-#: src/Modules/Seo/YSTPAddonsSlugTranslator.php:351
+#: src/Modules/Seo/YSTPAddonsSlugTranslator.php:602
 #, php-format
 msgid "為各語言設定自訂網址 slug（留空＝沿用原始 slug「%s」）。"
 msgstr ""
 
-#: src/Modules/Seo/YSTPAddonsSlugTranslator.php:373
+#: src/Modules/Seo/YSTPAddonsSlugTranslator.php:621
 msgid "沿用自既有設定，儲存後即由本外掛接管。"
+msgstr ""
+
+#. translators: %s: 語言名稱
+#: src/Modules/Seo/YSTPAddonsSlugTranslator.php:693
+#, php-format
+msgid "網址 slug（%s）"
+msgstr ""
+
+#: src/Modules/Seo/YSTPAddonsSlugTranslator.php:704
+msgid "留空＝該語言沿用原始 slug。"
 msgstr ""
 
 #: src/Support/YSTPAddonsCompat.php:81
@@ -818,28 +828,48 @@ msgid "啟用翻譯網址 slug"
 msgstr ""
 
 #: templates/admin/seo.php:127
-msgid "開啟後，可在每篇文章／頁面的編輯畫面為各語言設定自訂網址 slug，例如英文 /sample/ 對應中文 /範例/。"
+msgid "開啟後可為各語言設定自訂網址 slug，涵蓋：文章／頁面／自訂內容單頁（於編輯畫面設定）、分類項目（於分類編輯畫面設定），以及下方的網址基底。例如英文 /en/news-category/company-news/ 對應中文 /news-cat/新聞/。"
 msgstr ""
 
 #: templates/admin/seo.php:132
-msgid "需使用「漂亮的永久連結」。變更此設定或大量調整 slug 後，建議到「設定 → 永久連結」按一次儲存以重整路由。"
+msgid "網址基底 slug"
+msgstr ""
+
+#: templates/admin/seo.php:134
+msgid "分類與內容類型網址中的固定段落（如 /news-cat/、/products/）。留空＝該語言沿用原始基底。"
 msgstr ""
 
 #: templates/admin/seo.php:145
-msgid "偵測到的 SEO 外掛："
+msgid "分類"
+msgstr ""
+
+#: templates/admin/seo.php:146
+msgid "內容類型"
 msgstr ""
 
 #: templates/admin/seo.php:150
-#: templates/admin/seo.php:158
+msgid "目前只有一種語言，無需設定基底。"
+msgstr ""
+
+#: templates/admin/seo.php:190
+msgid "需使用「漂亮的永久連結」。變更此設定或大量調整 slug 後，建議到「設定 → 永久連結」按一次儲存以重整路由。"
+msgstr ""
+
+#: templates/admin/seo.php:203
+msgid "偵測到的 SEO 外掛："
+msgstr ""
+
+#: templates/admin/seo.php:208
+#: templates/admin/seo.php:216
 msgid "已啟用 · 將加入語言 alternate"
 msgstr ""
 
-#: templates/admin/seo.php:152
-#: templates/admin/seo.php:160
+#: templates/admin/seo.php:210
+#: templates/admin/seo.php:218
 msgid "未安裝"
 msgstr ""
 
-#: templates/admin/seo.php:164
+#: templates/admin/seo.php:222
 msgid "安裝 Yoast 或 RankMath 後，本模組會自動在其 sitemap 的每個網址加入各語言的 xhtml:link alternate，提升多語索引品質。"
 msgstr ""
 

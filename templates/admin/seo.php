@@ -124,9 +124,67 @@ $has_rankmath = class_exists( 'RankMath' );
                 <label><?php esc_html_e( '啟用翻譯網址 slug', 'ys-translatepress-addons' ); ?></label>
                 <label class="ystp-toggle" style="margin-top:4px;"><input type="checkbox" data-setting="seo_slug_enabled" <?php checked( $slug_on, 1 ); ?> /><span class="ystp-slider"></span></label>
                 <p class="ystp-field-desc">
-                    <?php esc_html_e( '開啟後，可在每篇文章／頁面的編輯畫面為各語言設定自訂網址 slug，例如英文 /sample/ 對應中文 /範例/。', 'ys-translatepress-addons' ); ?>
+                    <?php esc_html_e( '開啟後可為各語言設定自訂網址 slug，涵蓋：文章／頁面／自訂內容單頁（於編輯畫面設定）、分類項目（於分類編輯畫面設定），以及下方的網址基底。例如英文 /en/news-category/company-news/ 對應中文 /news-cat/新聞/。', 'ys-translatepress-addons' ); ?>
                 </p>
             </div>
+
+            <div class="ystp-field ystp-field-wide">
+                <label><?php esc_html_e( '網址基底 slug', 'ys-translatepress-addons' ); ?></label>
+                <p class="ystp-field-desc" style="margin:0 0 12px;">
+                    <?php esc_html_e( '分類與內容類型網址中的固定段落（如 /news-cat/、/products/）。留空＝該語言沿用原始基底。', 'ys-translatepress-addons' ); ?>
+                </p>
+                <?php
+                $slug_tr   = '\YangSheep\TPAddons\Modules\Seo\YSTPAddonsSlugTranslator';
+                $tr_langs  = [];
+                foreach ( $langs as $code => $name ) {
+                    if ( $code !== YSTPAddonsTP::default_language() ) {
+                        $tr_langs[ $code ] = $name;
+                    }
+                }
+                $groups = [
+                    __( '分類', 'ys-translatepress-addons' )     => [ 'kind' => 'tax', 'items' => $slug_tr::base_taxonomies() ],
+                    __( '內容類型', 'ys-translatepress-addons' ) => [ 'kind' => 'pt',  'items' => $slug_tr::base_post_types() ],
+                ];
+                ?>
+                <?php if ( empty( $tr_langs ) ) : ?>
+                    <p class="ystp-muted"><?php esc_html_e( '目前只有一種語言，無需設定基底。', 'ys-translatepress-addons' ); ?></p>
+                <?php else : ?>
+                    <?php foreach ( $groups as $group_label => $group ) : ?>
+                        <?php if ( empty( $group['items'] ) ) { continue; } ?>
+                        <p style="margin:10px 0 6px;font-weight:600;"><?php echo esc_html( $group_label ); ?></p>
+                        <div class="ystp-cr-types">
+                            <?php foreach ( $group['items'] as $obj ) :
+                                $base = ( 'tax' === $group['kind'] )
+                                    ? $slug_tr::taxonomy_base( $obj )
+                                    : $slug_tr::post_type_base( $obj );
+                                ?>
+                                <div class="ystp-cr-type">
+                                    <div class="ystp-cr-type-head">
+                                        <span class="ystp-cr-type-name"><?php echo esc_html( $obj->labels->singular_name ); ?></span>
+                                        <code class="ystp-cr-type-slug"><?php echo esc_html( $base ); ?></code>
+                                    </div>
+                                    <div class="ystp-cr-type-body">
+                                        <div class="ystp-cr-type-row" style="flex-wrap:wrap;gap:8px 16px;">
+                                            <?php foreach ( $tr_langs as $code => $name ) :
+                                                $key = $slug_tr::base_key( $group['kind'], $obj->name, $code );
+                                                $val = (string) YSTPAddonsSettingsRepo::get( $key, '' );
+                                                ?>
+                                                <label style="display:inline-flex;align-items:center;gap:6px;">
+                                                    <span class="ystp-cr-type-lbl" style="min-width:auto;"><?php echo esc_html( $name ); ?></span>
+                                                    <input type="text" data-setting="<?php echo esc_attr( $key ); ?>"
+                                                        value="<?php echo esc_attr( $val ); ?>"
+                                                        placeholder="<?php echo esc_attr( $base ); ?>" style="width:170px;" />
+                                                </label>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
             <div class="ystp-note ystp-note-warn" style="margin:6px 0 14px;">
                 <span class="dashicons dashicons-info-outline"></span>
                 <?php esc_html_e( '需使用「漂亮的永久連結」。變更此設定或大量調整 slug 後，建議到「設定 → 永久連結」按一次儲存以重整路由。', 'ys-translatepress-addons' ); ?>
