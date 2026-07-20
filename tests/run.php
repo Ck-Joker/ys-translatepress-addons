@@ -167,6 +167,57 @@ if ( '' !== $rtax && class_exists( '\RankMath\Sitemap\Cache' ) ) {
     echo "SKIP: 無適用 taxonomy 或 RankMath 未啟用\n";
 }
 
+/* ───── 6. 翻譯 slug：sitemap 是否輸出翻譯後網址（含基底） ───── */
+echo "\n== 6. 翻譯 slug × sitemap ==\n";
+$slug_cls = '\YangSheep\TPAddons\Modules\Seo\YSTPAddonsSlugTranslator';
+$repo_cls = '\YangSheep\TPAddons\Database\YSTPAddonsSettingsRepo';
+if ( class_exists( $slug_cls ) && '' !== $rtax && class_exists( '\RankMath\Sitemap\Cache' ) ) {
+    $slug_was = (int) $repo_cls::get( 'seo_slug_enabled', 0 );
+    $base_key = $slug_cls::base_key( 'tax', $rtax, $other );
+    $base_was = (string) $repo_cls::get( $base_key, '' );
+
+    $repo_cls::set( 'seo_slug_enabled', 1 );
+    $repo_cls::set( $base_key, 'ys-test-base' );
+    $slug_cls::refresh_base_pairs();
+    $slug_cls::flush_map();
+
+    $tr3  = wp_insert_term( 'ys-test-slug-term', $rtax );
+    $tid3 = is_wp_error( $tr3 ) ? 0 : (int) $tr3['term_id'];
+    update_term_meta( $tid3, $slug_cls::META_PREFIX . $other, 'ys-test-slug' );
+    $pid3 = wp_insert_post( [ 'post_title' => 'ys-test-slug-post', 'post_type' => $rpt, 'post_status' => 'publish' ] );
+    wp_set_object_terms( $pid3, [ $tid3 ], $rtax );
+    $slug_cls::flush_map();
+    \RankMath\Sitemap\Cache::invalidate_storage();
+
+    $cleanup[] = static function () use ( $pid3, $tid3, $rtax, $repo_cls, $slug_cls, $slug_was, $base_key, $base_was ) {
+        wp_delete_post( $pid3, true );
+        wp_delete_term( $tid3, $rtax );
+        $repo_cls::set( 'seo_slug_enabled', $slug_was );
+        $repo_cls::set( $base_key, $base_was );
+        $slug_cls::refresh_base_pairs();
+        $slug_cls::flush_map();
+        \RankMath\Sitemap\Cache::invalidate_storage();
+    };
+
+    $map = $slug_cls::map( $other );
+    t( '對照表含基底翻譯', ( $map['out']['ys-test-base'] ?? '' ) !== '' || in_array( 'ys-test-base', $map['out'], true ) );
+    t( '對照表含分類項目翻譯', in_array( 'ys-test-slug', $map['out'], true ) );
+
+    $sm2 = wp_remote_get( home_url( "/{$rtax}-sitemap.xml" ), [ 'timeout' => 30, 'sslverify' => false ] );
+    $xml2 = is_wp_error( $sm2 ) ? '' : (string) wp_remote_retrieve_body( $sm2 );
+    $expect = home_url( "/{$slug}/ys-test-base/ys-test-slug/" );
+    t( "sitemap 輸出翻譯後網址（{$expect}）", false !== strpos( $xml2, '<loc>' . $expect . '</loc>' ) );
+
+    if ( false !== strpos( $xml2, '<loc>' . $expect . '</loc>' ) ) {
+        $head = wp_remote_head( $expect, [ 'timeout' => 30, 'sslverify' => false, 'redirection' => 0 ] );
+        $code = is_wp_error( $head ) ? 0 : (int) wp_remote_retrieve_response_code( $head );
+        echo "  translated URL HTTP {$code}\n";
+        t( 'sitemap 列出的翻譯網址可解析（200）', 200 === $code );
+    }
+} else {
+    echo "SKIP: slug 模組／taxonomy／RankMath 不齊\n";
+}
+
 /* ───── cleanup ───── */
 echo "\n== cleanup ==\n";
 foreach ( array_reverse( $cleanup ) as $fn ) { $fn(); }
