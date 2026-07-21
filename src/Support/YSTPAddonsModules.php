@@ -70,6 +70,13 @@ class YSTPAddonsModules {
                 'default' => true,
                 'phase'   => 1,
             ],
+            'language_fonts' => [
+                'icon'    => 'dashicons-editor-textcolor',
+                'page'    => 'ys-tp-fonts',
+                'class'   => \YangSheep\TPAddons\Modules\LanguageFonts\YSTPAddonsLanguageFonts::class,
+                'default' => false,
+                'phase'   => 1,
+            ],
             'ai_translate' => [
                 'icon'    => 'dashicons-superhero',
                 'page'    => 'ys-tp-ai',
@@ -120,6 +127,10 @@ class YSTPAddonsModules {
             'content_rules'     => [
                 'label' => __( '內容語言規則', 'ys-translatepress-addons' ),
                 'desc'  => __( '頁面／文章／自訂內容可排除或指定語言顯示，切換語言時自動重導至該語言的對應頁。', 'ys-translatepress-addons' ),
+            ],
+            'language_fonts'    => [
+                'label' => __( '逐語言字型', 'ys-translatepress-addons' ),
+                'desc'  => __( '為每個語言指定不同字型，解決 CJK 字型在其他語系下標點過大等顯示問題。', 'ys-translatepress-addons' ),
             ],
             'ai_translate'      => [
                 'label' => __( 'AI 翻譯', 'ys-translatepress-addons' ),
