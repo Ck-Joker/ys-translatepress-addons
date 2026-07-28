@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.2] - 2026-07-28
+
+### Fixed
+
+- Stop the bundled YS Hub Client library from registering an invalid
+  WooCommerce HPOS declaration from its vendor path.
+
 本檔案記錄所有重要變更，格式依循 [Keep a Changelog](https://keepachangelog.com/)。
 
 ## [0.16.1] - 2026-07-19 — 修正：四態顯示語意（可覆寫類型隱藏）＋分類排除不再影響 REST／sitemap
