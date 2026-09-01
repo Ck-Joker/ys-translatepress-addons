@@ -690,7 +690,24 @@ class YSTPAddonsContentRules implements YSTPAddonsModuleInterface {
 
     /* ───────────── 前台：單頁智慧重導 ───────────── */
 
+    /**
+     * 是否為 TranslatePress 翻譯編輯器／預覽請求
+     *
+     * 編輯器外殼（trp-edit-translation=true）與預覽 iframe（=preview）皆以前台請求
+     * 載入被編輯的頁面並帶此參數。用於在編輯器情境略過前台智慧重導——否則預覽 iframe
+     * 會被導離被編輯的頁面，導致翻譯編輯器中該頁字串無法選取（呈現灰色不可點）。
+     * 比照 TranslatePress PRO 於編輯器情境不套用重導的行為；分類規則亦共用此判斷。
+     */
+    public static function is_translation_editor_request(): bool {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- 僅讀取情境旗標，不處理表單資料
+        return isset( $_REQUEST['trp-edit-translation'] );
+    }
+
     public function maybe_redirect(): void {
+        // 翻譯編輯器／預覽情境不重導（見 is_translation_editor_request() 說明）
+        if ( self::is_translation_editor_request() ) {
+            return;
+        }
         if ( ! $this->redirect_enabled() ) {
             return;
         }

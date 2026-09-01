@@ -132,6 +132,10 @@ class YSTPAddonsTermRules {
      * 被隱藏語言的分類頁 → 依所屬內容類型的重導原則跳轉
      */
     public function maybe_redirect(): void {
+        // 翻譯編輯器／預覽情境不重導（與內容規則共用判斷，避免編輯分類頁時預覽被導離）
+        if ( YSTPAddonsContentRules::is_translation_editor_request() ) {
+            return;
+        }
         if ( ! is_category() && ! is_tag() && ! is_tax() ) {
             return;
         }
