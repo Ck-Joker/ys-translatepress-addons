@@ -120,6 +120,17 @@ try {
     $calls_before = $mock_calls;
     $slug_module->translate_post_slugs( $post_id );
     $assert( get_post_meta( $post_id, $key, true ) === $manual && $calls_before === $mock_calls, '重跑保留人工譯名且不消耗 API 配額' );
+    global $TRP_LANGUAGE;
+    $previous_language = $TRP_LANGUAGE;
+    try {
+        $TRP_LANGUAGE = 'en_US';
+        $cart = home_url( '/en/' . $slug . '/' );
+        $target = home_url( '/en/' . $manual . '/' );
+        $assert( apply_filters( 'woocommerce_get_cart_url', $cart ) === $target, 'WooCommerce 轉址套用既有購物車譯址' );
+        $assert( apply_filters( 'woocommerce_get_cart_url', $target ) === $target, '已翻譯的購物車網址維持單一語言前綴' );
+    } finally {
+        $TRP_LANGUAGE = $previous_language;
+    }
 
     update_post_meta( $post_id, $key, sanitize_title( '測試' . $token ) );
     YSTPAddonsSlugTranslator::flush_map();

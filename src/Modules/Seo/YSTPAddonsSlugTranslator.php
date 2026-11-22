@@ -71,6 +71,10 @@ class YSTPAddonsSlugTranslator {
             add_filter( 'get_canonical_url', [ $this, 'canonical_url' ], 20 );
             add_filter( 'wpseo_canonical', [ $this, 'canonical_url' ], 20 );
             add_filter( 'rank_math/frontend/canonical', [ $this, 'canonical_url' ], 20 );
+            // WooCommerce 可在 HTML 渲染前依購物車網址轉址，須先套用已存在的語言譯址。
+            foreach ( [ 'woocommerce_get_cart_url', 'woocommerce_get_checkout_url', 'woocommerce_get_endpoint_url', 'woocommerce_cart_item_permalink' ] as $hook ) {
+                add_filter( $hook, [ $this, 'canonical_url' ], 99 );
+            }
         }
         // Inbound 由主檔在 plugins_loaded priority 2（早於 TranslatePress）呼叫 run_inbound()
     }
