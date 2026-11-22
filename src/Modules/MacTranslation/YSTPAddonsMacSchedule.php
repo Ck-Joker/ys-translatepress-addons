@@ -70,16 +70,35 @@ final class YSTPAddonsMacSchedule {
             || ! in_array( $TRP_LANGUAGE, (array) ( $settings['publish-languages'] ?? [] ), true ) ) {
             return;
         }
+        self::enqueue( $post->ID, [ $TRP_LANGUAGE ], 'visit' );
+    }
+
+    public static function enqueue_published_post( string $status, string $previous, \WP_Post $post ): void {
+        if ( $status !== 'publish' || $previous === 'publish' || ! self::allows_post( $post->ID )
+            || $post->post_type === 'attachment' || $post->post_password !== '' || ! is_post_publicly_viewable( $post ) ) {
+            return;
+        }
+        if ( function_exists( 'wc_get_page_id' ) && in_array( $post->ID, array_map( 'wc_get_page_id', [ 'cart', 'checkout', 'myaccount' ] ), true ) ) {
+            return;
+        }
+        $settings = (array) get_option( 'trp_settings', [] );
+        $targets = array_filter( (array) ( $settings['publish-languages'] ?? [] ),
+            static fn( $locale ): bool => is_string( $locale ) && $locale !== ( $settings['default-language'] ?? '' ) );
+        self::enqueue( $post->ID, $targets, 'publish' );
+    }
+
+    private static function enqueue( int $id, array $targets, string $trigger ): void {
         $schedule = self::settings();
         if ( ! $schedule['enabled'] || ! $schedule['auto_write'] || ! self::ready() ) {
             return;
         }
-        $slot = crc32( $post->ID . ':' . $TRP_LANGUAGE ) % self::QUEUE_SLOTS;
-        $key = self::QUEUE . $slot;
-        // 同站最多八個待檢查項目，訪客請求不儲存網址、內容、Cookie 或身分。
-        if ( get_transient( $key ) === false ) {
-            set_transient( $key, [ 'post' => $post->ID, 'target' => $TRP_LANGUAGE, 'revision' => $schedule['revision'],
-                'event' => wp_generate_uuid4() ], 5 * MINUTE_IN_SECONDS );
+        foreach ( $targets as $target ) {
+            $key = self::QUEUE . ( crc32( $id . ':' . $target ) % self::QUEUE_SLOTS );
+            // 同站最多八個待檢查項目，只儲存公開內容 ID 與語系。
+            if ( get_transient( $key ) === false ) {
+                set_transient( $key, [ 'post' => $id, 'target' => $target, 'revision' => $schedule['revision'],
+                    'event' => wp_generate_uuid4(), 'trigger' => $trigger ], 5 * MINUTE_IN_SECONDS );
+            }
         }
     }
 
