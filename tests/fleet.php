@@ -126,7 +126,21 @@ try {
     $_SERVER['REQUEST_URI'] = $translated_path . '?page=1';
     $_SERVER['PATH_INFO'] = $translated_path;
     $slug_module->inbound_rewrite();
-    $assert( $_SERVER['PATH_INFO'] === '/en/' . $slug . '/' && $_SERVER['REQUEST_URI'] === '/en/' . $slug . '/?page=1', '入站譯名同步解析請求路徑並保留查詢參數' );
+    $assert( ! isset( $_SERVER['PATH_INFO'] ) && $_SERVER['REQUEST_URI'] === '/en/' . $slug . '/?page=1', '入站以改寫後的請求路徑解析並保留參數' );
+
+    $source_slug = sanitize_title( '中文原始網址' . $token );
+    $encoded_id = wp_insert_post( [ 'post_title' => '非 ASCII 來源', 'post_name' => $source_slug, 'post_status' => 'publish' ] );
+    try {
+        update_post_meta( $encoded_id, $key, 'encoded-source-fixture-' . $token );
+        YSTPAddonsSlugTranslator::flush_map();
+        $_SERVER['REQUEST_URI'] = $_SERVER['PATH_INFO'] = '/en/encoded-source-fixture-' . $token . '/';
+        $slug_module->inbound_rewrite();
+        $assert( ! isset( $_SERVER['PATH_INFO'] ) && $_SERVER['REQUEST_URI'] === '/en/' . $source_slug . '/', '原始中文網址僅保留單層編碼' );
+    } finally {
+        wp_clear_scheduled_hook( YSTPAddonsSlugTranslator::AUTO_SLUG_HOOK, [ $encoded_id ] );
+        wp_delete_post( $encoded_id, true );
+        YSTPAddonsSlugTranslator::flush_map();
+    }
     $_SERVER['REQUEST_URI'] = $old_uri;
     $_SERVER['PATH_INFO'] = $old_path;
 

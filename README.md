@@ -8,7 +8,7 @@ TranslatePress 免費版的增強套件 — 由 YANGSHEEP DESIGN 開發與維護
 
 - 搭配 TranslatePress Multilingual 3.4 驗證。在「多語增強」啟用需要的模組。翻譯者角色使用與官方外掛相同的 `translate_strings` 權限，管理員可於 WordPress 使用者頁指派。翻譯者可到「翻譯網站」，管理員可在編輯器預覽常見角色。
 - Google Cloud Translation Basic v2 由 TranslatePress 核心設定金鑰與用量。啟用「Google 翻譯術語」後可在核心的術語表設定固定用詞。術語隨新翻譯套用，取決於供應商保留相應保護標記。以真實金鑰試點時應驗證關鍵術語，並保留人工審閱流程。
-- 在「SEO 增強」啟用翻譯 slug 和自動翻譯 slug，新發布的公開文章、頁面及自訂內容會由 WP-Cron 補譯。既有人工 slug、已翻譯的舊 slug、分類和基底依原本設定讀取。轉移前應備份並逐一驗證已收錄路徑。
+- 在「SEO 增強」啟用翻譯 slug 和自動翻譯 slug，新發布的公開文章、頁面及自訂內容可由 Google v2 搭配 WP-Cron 補譯。另可透過管理端的 Mac 翻譯流程領取待譯網址並在審核後寫回。既有人工 slug、已翻譯的舊 slug、分類和基底依原本設定讀取。轉移前應備份並逐一驗證已收錄路徑。
 - IP 偵測可使用 WooCommerce 已設定的本機 GeoIP 資料庫。若站台僅能經過可信任且覆寫該標頭的 Cloudflare 入口，可在 wp-config.php 設定 `YS_TP_TRUST_CF_IPCOUNTRY` 為 true。其他可信任的國碼來源可使用 `ys_tp_detect_country` filter。
 - 每語言獨立網域與跨網域登入未實作。依賴該功能的站台需繼續使用原外掛。
 
