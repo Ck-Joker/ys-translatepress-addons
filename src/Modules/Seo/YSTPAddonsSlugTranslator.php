@@ -52,6 +52,8 @@ class YSTPAddonsSlugTranslator {
     /** @var array<string, array<string, array<string, string>>> 單一請求內的對照表快取 */
     private static array $map_cache = [];
 
+    private static ?array $translated_request = null;
+
     public function boot(): void {
         add_action( 'transition_post_status', [ $this, 'schedule_auto_slugs' ], 10, 3 );
         add_action( self::AUTO_SLUG_HOOK, [ $this, 'translate_post_slugs' ] );
@@ -69,7 +71,9 @@ class YSTPAddonsSlugTranslator {
             // Outbound：TranslatePress 產生語言 URL 時，把原始 slug 換成翻譯 slug
             add_filter( 'trp_get_url_for_language', [ $this, 'outbound_translate' ], 10, 3 );
             add_filter( 'get_canonical_url', [ $this, 'canonical_url' ], 20 );
+            add_filter( 'redirect_canonical', [ $this, 'canonical_redirect' ], 90 );
             add_filter( 'wpseo_canonical', [ $this, 'canonical_url' ], 20 );
+            add_filter( 'sc_icg_seo_canonical_url', [ $this, 'canonical_url' ], 20 );
             add_filter( 'rank_math/frontend/canonical', [ $this, 'canonical_url' ], 20 );
             // WooCommerce 可在 HTML 渲染前依購物車網址轉址，須先套用已存在的語言譯址。
             foreach ( [ 'woocommerce_get_cart_url', 'woocommerce_get_checkout_url', 'woocommerce_get_endpoint_url', 'woocommerce_cart_item_permalink' ] as $hook ) {
@@ -574,6 +578,28 @@ class YSTPAddonsSlugTranslator {
         return YSTPAddonsTP::url_for_language( $language, $url );
     }
 
+    public function canonical_redirect( $url ) {
+        if ( ! is_string( $url ) || self::$translated_request === null || is_404() ) {
+            return $url;
+        }
+
+        $request = self::$translated_request;
+        $home_host = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
+        $parts = wp_parse_url( $url );
+        if ( ! is_array( $parts ) || ( $parts['host'] ?? '' ) !== $home_host ) {
+            return $url;
+        }
+
+        // WP 可把已正確解析的外語請求導向內部原始網址。只取消折回同一公開譯址的 canonical 轉址。
+        $localized = wp_parse_url( YSTPAddonsTP::url_for_language( $request['locale'], $url ) );
+        if ( ( $localized['host'] ?? '' ) === $home_host
+            && ( $localized['query'] ?? '' ) === $request['query']
+            && rawurldecode( $localized['path'] ?? '' ) === rawurldecode( $request['path'] ) ) {
+            return false;
+        }
+        return $url;
+    }
+
     /* ───────────── Inbound ───────────── */
 
     public function inbound_rewrite(): void {
@@ -634,6 +660,7 @@ class YSTPAddonsSlugTranslator {
         if ( $changed ) {
             $new_path = '/' . ( '' !== $home_path ? $home_path . '/' : '' ) . implode( '/', $segments ) . '/';
             $query    = (string) wp_parse_url( $uri, PHP_URL_QUERY );
+            self::$translated_request = [ 'path' => $path, 'query' => $query, 'locale' => $locale ];
             $_SERVER['REQUEST_URI'] = $new_path . ( '' !== $query ? '?' . $query : '' );
             // WordPress 會再編碼 PATH_INFO 的百分比。若它只是原路徑的副本，改用已編碼的 REQUEST_URI。
             if ( isset( $_SERVER['PATH_INFO'] ) && rawurldecode( (string) $_SERVER['PATH_INFO'] ) === rawurldecode( $path ) ) {

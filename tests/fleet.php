@@ -144,6 +144,10 @@ try {
     $_SERVER['PATH_INFO'] = $translated_path;
     $slug_module->inbound_rewrite();
     $assert( ! isset( $_SERVER['PATH_INFO'] ) && $_SERVER['REQUEST_URI'] === '/en/' . $slug . '/?page=1', '入站以改寫後的請求路徑解析並保留參數' );
+    $canonical = home_url( '/en/' . $slug . '/?page=1' );
+    $assert( $slug_module->canonical_redirect( $canonical ) === false, '已翻譯的公開網址不轉往內部原始網址' );
+    $another = home_url( '/en/' . $slug . '/?page=2' );
+    $assert( $slug_module->canonical_redirect( $another ) === $another, '保留不同查詢參數的 canonical 轉址' );
 
     $source_slug = sanitize_title( '中文原始網址' . $token );
     $encoded_id = wp_insert_post( [ 'post_title' => '非 ASCII 來源', 'post_name' => $source_slug, 'post_status' => 'publish' ] );

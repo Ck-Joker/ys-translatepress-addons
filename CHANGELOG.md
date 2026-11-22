@@ -2,6 +2,12 @@
 
 本檔案記錄所有重要變更，格式依循 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.20.3] - 2026-11-22
+
+### 修正
+
+- 保留已正確解析的既有外語譯址，防止 WordPress canonical 把訪客轉往同一內容的原始 slug。
+
 ## [0.20.2] - 2026-11-22
 
 ### 修正
