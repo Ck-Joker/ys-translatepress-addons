@@ -45,6 +45,7 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
 
             // sitemap alternate（外掛存在才掛）
             add_filter( 'wpseo_sitemap_url', [ $this, 'yoast_sitemap_alternates' ], 10, 2 );
+            add_filter( 'wpseo_sitemap_urlset', [ $this, 'add_xhtml_namespace' ] );
             add_filter( 'rank_math/sitemap/url', [ $this, 'rankmath_sitemap_alternates' ], 10, 2 );
 
             // RankMath 的 <urlset> 預設未宣告 xhtml 命名空間；補上，否則注入的

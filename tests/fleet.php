@@ -22,6 +22,12 @@ $assert = static function ( bool $condition, string $label ): void {
 
 $admin_id = get_current_user_id();
 $assert( current_user_can( 'manage_options' ), '以管理員執行本機測試' );
+$yoast_urlset = '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+$yoast_with_namespace = apply_filters( 'wpseo_sitemap_urlset', $yoast_urlset );
+$xml = new DOMDocument();
+$assert( $xml->loadXML( $yoast_with_namespace . '<url><xhtml:link rel="alternate" hreflang="en" href="https://example.com/en/"/></url></urlset>' ), 'Yoast 多語 sitemap 的 XHTML 連結可解析' );
+$assert( apply_filters( 'wpseo_sitemap_urlset', $yoast_with_namespace ) === $yoast_with_namespace, '已宣告的 XHTML 命名空間不重複寫入' );
+
 do_action( 'admin_init' );
 $role = get_role( 'translator' );
 $assert( $role && $role->has_cap( 'translate_strings' ) && ! $role->has_cap( 'manage_options' ), '翻譯者角色最小權限' );

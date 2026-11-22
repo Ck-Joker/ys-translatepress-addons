@@ -2,6 +2,12 @@
 
 本檔案記錄所有重要變更，格式依循 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [0.20.1] - 2026-11-22
+
+### 修正
+
+- Yoast 多語 sitemap 宣告 XHTML 命名空間，讓搜尋引擎能解析語言替代連結。
+
 ## [0.20.0] - 2026-11-22
 
 ### 新增
