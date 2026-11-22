@@ -58,6 +58,9 @@ $impl_count    = count( array_filter( $modules, static fn( $m ) => ! empty( $m['
         </div>
     </div>
 
+    <?php if ( current_user_can( \YangSheep\TPAddons\Admin\YSTPAddonsMacAdmin::CAPABILITY ) ) : ?>
+        <p><a class="ystp-btn" href="<?php echo esc_url( admin_url( 'admin.php?page=' . \YangSheep\TPAddons\Admin\YSTPAddonsMacAdmin::PAGE ) ); ?>"><?php esc_html_e( '管理 Mac ChatGPT 翻譯排程', 'ys-translatepress-addons' ); ?></a></p>
+    <?php endif; ?>
     <h2 class="ystp-section-title">功能模組</h2>
     <p class="ystp-section-desc">開啟需要的功能；每個模組可獨立啟用或停用。標示「即將推出」者將於後續版本提供。</p>
 

@@ -276,3 +276,22 @@
 .ystp-toast.show { opacity: 1; transform: translateY(0); }
 .ystp-toast.is-error { background: #b3413a; }
 .ystp-toast .dashicons { font-size: 18px; width: 18px; height: 18px; }
+
+/* Mac 翻譯排程 */
+.ystp-mac .ystp-mac-header { border-bottom: 1px solid #dcdcde; padding: 12px 0 16px; }
+.ystp-mac .ystp-mac-header h1 { font-size: 25px; font-weight: 600; margin: 0 0 8px; }
+.ystp-mac .ystp-mac-header p { color: var(--ystp-muted); margin: 0; }
+.ystp-mac .ystp-mac-grid { align-items: start; }
+.ystp-mac .ystp-mac-field { display: grid; gap: 8px; margin-block: 16px; }
+.ystp-mac .ystp-mac-field label { font-weight: 600; }
+.ystp-mac .ystp-mac-field select { width: min(100%, 220px); }
+.ystp-mac .ystp-mac-save { background: #204b8b; border-color: #204b8b; color: #fff; }
+.ystp-mac .ystp-mac-save:hover { background: #173d75; color: #fff; }
+.ystp-mac .ystp-mac-save:focus-visible { outline: 2px solid #204b8b; outline-offset: 3px; }
+.ystp-mac .ystp-mac-status { display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; margin: 0; }
+.ystp-mac .ystp-mac-status dt { font-weight: 600; }
+.ystp-mac .ystp-mac-status dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 782px) {
+    .ystp-mac .ystp-mac-field label, .ystp-mac .ystp-mac-save { min-height: 44px; }
+    .ystp-mac .ystp-mac-field select { min-height: 44px; font-size: 16px; }
+}

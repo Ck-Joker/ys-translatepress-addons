@@ -19,7 +19,11 @@ class YSTPAddonsAdmin {
     /** @var string 主選單 slug */
     public const MENU_SLUG = 'ys-tp-addons';
 
+    private YSTPAddonsMacAdmin $mac_admin;
+
     public function __construct() {
+        $this->mac_admin = new YSTPAddonsMacAdmin();
+        $this->mac_admin->boot();
         add_action( 'admin_menu', [ $this, 'register_menu' ], 20 );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
         add_action( 'admin_head', [ $this, 'hide_disabled_menu_items' ] );
@@ -47,6 +51,8 @@ class YSTPAddonsAdmin {
             self::MENU_SLUG,
             [ $this, 'render_overview' ]
         );
+
+        $this->mac_admin->register_menu();
 
         // 依模組註冊表動態加入子選單。頁面全部註冊以保持「可存取」，讓停用的模組
         // 仍可由總覽「前往設定」進入並顯示「模組已停用」提示（方便預先設定）。
