@@ -22,8 +22,20 @@ final class YSTPAddonsMacRelease {
         return defined( 'YS_TP_MAC_GATE_LOCALES' ) ? (array) YS_TP_MAC_GATE_LOCALES : [];
     }
 
+    public static function publication_window( string $locale ): array {
+        $overrides = defined( 'YS_TP_MAC_GATE_STARTS' ) ? (array) YS_TP_MAC_GATE_STARTS : [];
+        $window = (array) ( $overrides[ $locale ] ?? [] );
+        return [
+            'since' => (int) ( $window['since'] ?? ( defined( 'YS_TP_MAC_GATE_SINCE' ) ? YS_TP_MAC_GATE_SINCE : 0 ) ),
+            'min_id' => (int) ( $window['min_id'] ?? ( defined( 'YS_TP_MAC_GATE_MIN_ID' ) ? YS_TP_MAC_GATE_MIN_ID : 0 ) ),
+            'post_id' => (int) ( $window['post_id'] ?? 0 ),
+        ];
+    }
+
     public static function pending( int $id, string $locale ): bool {
-        if ( ! in_array( $locale, self::locales(), true ) || ! defined( 'YS_TP_MAC_GATE_SINCE' )
+        $window = self::publication_window( $locale );
+        if ( ! in_array( $locale, self::locales(), true ) || $window['since'] <= 0
+            || ( $window['post_id'] && $id !== $window['post_id'] )
             || ! YSTPAddonsMacSchedule::allows_post( $id ) ) {
             return false;
         }
@@ -31,12 +43,13 @@ final class YSTPAddonsMacRelease {
         $trp = (array) get_option( 'trp_settings', [] );
         if ( ! $post || ! in_array( $post->post_type, [ 'page', 'post' ], true ) || $post->post_status !== 'publish'
             || $post->post_password !== '' || ! is_post_publicly_viewable( $post )
-            || ! str_starts_with( (string) ( $trp['default-language'] ?? '' ), 'zh_' ) || ! str_starts_with( $locale, 'en_' )
+            || ! str_starts_with( (string) ( $trp['default-language'] ?? '' ), 'zh_' )
+            || ( ! str_starts_with( $locale, 'en_' ) && ( $locale !== 'zh_CN' || ( $trp['default-language'] ?? '' ) !== 'zh_TW' ) )
             || ! in_array( $locale, (array) ( $trp['publish-languages'] ?? [] ), true ) ) {
             return false;
         }
-        $new_id = defined( 'YS_TP_MAC_GATE_MIN_ID' ) && $id > (int) YS_TP_MAC_GATE_MIN_ID;
-        if ( ! $new_id && strtotime( $post->post_date_gmt . ' UTC' ) <= (int) YS_TP_MAC_GATE_SINCE ) {
+        $new_id = $window['min_id'] && $id > $window['min_id'];
+        if ( ! $new_id && strtotime( $post->post_date_gmt . ' UTC' ) <= $window['since'] ) {
             return false;
         }
         if ( function_exists( 'wc_get_page_id' ) && in_array( $id, array_map( 'wc_get_page_id', [ 'cart', 'checkout', 'myaccount' ] ), true ) ) {
@@ -152,8 +165,12 @@ final class YSTPAddonsMacRelease {
             $settings = (array) get_option( 'trp_settings', [] );
             $url = $source->get_url_for_language( $settings['default-language'], get_permalink( $post ), '' );
             header( 'Content-Type: text/html; charset=UTF-8', true );
-            echo '<!doctype html><html lang="en"><meta charset="utf-8"><title>Translation in progress</title>'
-                . '<main><h1>Translation in progress</h1><p><a href="' . esc_url( $url ) . '">Read the original page</a></p></main></html>';
+            $simplified = $TRP_LANGUAGE === 'zh_CN';
+            $heading = $simplified ? '简体中文译文准备中' : 'Translation in progress';
+            $label = $simplified ? '阅读原文' : 'Read the original page';
+            echo '<!doctype html><html lang="' . ( $simplified ? 'zh-CN' : 'en' ) . '"><meta charset="utf-8"><title>'
+                . esc_html( $heading ) . '</title><main><h1>' . esc_html( $heading ) . '</h1><p><a href="'
+                . esc_url( $url ) . '">' . esc_html( $label ) . '</a></p></main></html>';
         }
         exit;
     }
