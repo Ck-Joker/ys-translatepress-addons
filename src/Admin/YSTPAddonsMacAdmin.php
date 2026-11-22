@@ -56,7 +56,8 @@ final class YSTPAddonsMacAdmin {
         check_admin_referer( self::ACTION );
         $enabled = ( $_POST['enabled'] ?? '' ) === '1';
         $minutes = filter_var( $_POST['minutes'] ?? '', FILTER_VALIDATE_INT );
-        $ok = is_int( $minutes ) && YSTPAddonsMacSchedule::save( $enabled, $minutes );
+        $auto_write = ( $_POST['auto_write'] ?? '' ) === '1';
+        $ok = is_int( $minutes ) && YSTPAddonsMacSchedule::save( $enabled, $minutes, $auto_write );
         wp_safe_redirect( add_query_arg( [ 'page' => self::PAGE, 'schedule_result' => $ok ? 'saved' : 'blocked' ], admin_url( 'admin.php' ) ) );
         exit;
     }

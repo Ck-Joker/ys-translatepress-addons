@@ -16,7 +16,7 @@ $phases = [
 <div class="wrap ystp-wrap ystp-mac">
     <header class="ystp-mac-header">
         <h1><?php esc_html_e( 'Mac ChatGPT 翻譯', 'ys-translatepress-addons' ); ?></h1>
-        <p><?php esc_html_e( '由 Mac 定時領取公開頁面，使用已登入的 ChatGPT 帳號翻譯。審核稿會留在 Mac。', 'ys-translatepress-addons' ); ?></p>
+        <p><?php esc_html_e( '由 Mac 領取公開頁面並交給 ChatGPT 翻譯。啟用自動寫回後，訪客開啟語言頁時可將該頁優先排入補譯。', 'ys-translatepress-addons' ); ?></p>
     </header>
     <?php if ( $result === 'saved' || $result === 'blocked' ) : ?>
         <div class="notice <?php echo $result === 'saved' ? 'notice-success' : 'notice-error'; ?>" role="status"><p>
@@ -35,6 +35,12 @@ $phases = [
                 <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
                     <input type="hidden" name="action" value="<?php echo esc_attr( $action ); ?>">
                     <?php wp_nonce_field( $action ); ?>
+                    <div class="ystp-mac-field">
+                        <label for="ys-tp-mac-auto-write">
+                            <input type="checkbox" id="ys-tp-mac-auto-write" name="auto_write" value="1" <?php checked( $settings['auto_write'] ); ?>>
+                            <?php esc_html_e( '自動寫回公開譯文', 'ys-translatepress-addons' ); ?>
+                        </label>
+                    </div>
                     <div class="ystp-mac-field">
                         <label for="ys-tp-mac-enabled">
                             <input type="checkbox" id="ys-tp-mac-enabled" name="enabled" value="1" <?php checked( $settings['enabled'] ); ?> <?php disabled( ! $ready && ! $settings['enabled'] ); ?>>
@@ -72,6 +78,8 @@ $phases = [
                             <dd><?php echo esc_html( wp_date( 'Y-m-d H:i:s', (int) $report['finished'] ) ); ?></dd>
                             <dt><?php esc_html_e( '審核批次', 'ys-translatepress-addons' ); ?></dt>
                             <dd><?php echo esc_html( number_format_i18n( (int) ( $report['previews'] ?? 0 ) ) ); ?></dd>
+                            <dt><?php esc_html_e( '自動寫回筆數', 'ys-translatepress-addons' ); ?></dt>
+                            <dd><?php echo esc_html( number_format_i18n( (int) ( $report['written'] ?? 0 ) ) ); ?></dd>
                         <?php endif; ?>
                     <?php endif; ?>
                 </dl>
