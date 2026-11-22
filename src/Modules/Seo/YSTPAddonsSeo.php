@@ -136,6 +136,9 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
         if ( ! in_array( $lang, YSTPAddonsTP::published_language_codes(), true ) ) {
             $lang = YSTPAddonsTP::default_language();
         }
+        if ( \YangSheep\TPAddons\Modules\MacTranslation\YSTPAddonsMacRelease::pending( get_queried_object_id(), $lang ) ) {
+            return;
+        }
 
         $url = YSTPAddonsTP::url_for_language( $lang, YSTPAddonsTP::current_url() );
         echo '<link rel="alternate" hreflang="x-default" href="' . esc_url( $url ) . '" />' . "\n";
@@ -246,7 +249,8 @@ class YSTPAddonsSeo implements YSTPAddonsModuleInterface {
             if ( ! apply_filters( 'trp_add_language_url_to_sitemap', true, $code, $url, $output ) ) {
                 continue;
             }
-            if ( $post_id && self::is_hidden_in_language( $post_id, $code ) ) {
+            if ( $post_id && ( self::is_hidden_in_language( $post_id, $code )
+                || \YangSheep\TPAddons\Modules\MacTranslation\YSTPAddonsMacRelease::pending( $post_id, $code ) ) ) {
                 continue;
             }
             if ( $term_id && self::is_term_hidden_in_language( $term_id, $code ) ) {
