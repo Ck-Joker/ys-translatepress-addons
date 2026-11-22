@@ -68,6 +68,7 @@ class YSTPAddonsSlugTranslator {
             // 升級／首次啟用時補算一次（此時 init 已完成，可安全列舉分類與內容類型）
             add_action( 'admin_init', [ $this, 'maybe_seed_base_pairs' ], 20 );
         } else {
+            $this->use_original_woocommerce_rewrites();
             // Outbound：TranslatePress 產生語言 URL 時，把原始 slug 換成翻譯 slug
             add_filter( 'trp_get_url_for_language', [ $this, 'outbound_translate' ], 10, 3 );
             add_filter( 'get_canonical_url', [ $this, 'canonical_url' ], 20 );
@@ -81,6 +82,42 @@ class YSTPAddonsSlugTranslator {
             }
         }
         // Inbound 由主檔在 plugins_loaded priority 2（早於 TranslatePress）呼叫 run_inbound()
+    }
+
+    private function use_original_woocommerce_rewrites(): void {
+        if ( self::$translated_request === null || ! class_exists( '\WooCommerce' ) ) {
+            return;
+        }
+        $original_base = self::$translated_request['rewritten_base'];
+        $converter = YSTPAddonsTP::component( 'url_converter' );
+        if ( $original_base === '' || ! $converter ) {
+            return;
+        }
+        $permalink_callback = [ $converter, 'woocommerce_filter_permalink_option' ];
+        $rewrite_callback = [ $converter, 'woocommerce_filter_permalinks_on_other_languages' ];
+        $permalink_priority = has_filter( 'option_woocommerce_permalinks', $permalink_callback );
+        if ( $permalink_priority !== false ) {
+            remove_filter( 'option_woocommerce_permalinks', $permalink_callback, $permalink_priority );
+        }
+        $bases = (array) get_option( 'woocommerce_permalinks', [] );
+        $native_bases = [];
+        foreach ( [ 'product_base', 'category_base', 'tag_base' ] as $key ) {
+            if ( is_string( $bases[ $key ] ?? null ) ) {
+                $native_bases[] = trim( $bases[ $key ], '/' );
+            }
+        }
+        if ( ! in_array( $original_base, $native_bases, true ) ) {
+            if ( $permalink_priority !== false ) {
+                add_filter( 'option_woocommerce_permalinks', $permalink_callback, $permalink_priority );
+            }
+            return;
+        }
+
+        // YS 已將譯址還原為原始 WooCommerce 基底；此請求以原始規則解析。
+        $rewrite_priority = has_filter( 'option_rewrite_rules', $rewrite_callback );
+        if ( $rewrite_priority !== false ) {
+            remove_filter( 'option_rewrite_rules', $rewrite_callback, $rewrite_priority );
+        }
     }
 
     public function schedule_auto_slugs( string $status, string $old_status, \WP_Post $post ): void {
@@ -646,6 +683,7 @@ class YSTPAddonsSlugTranslator {
         // 反查：翻譯 slug → 原始 slug（語言前綴之後的段落）
         // 對照表的值已是資料庫／網址原形，直接寫回不再編碼（避免 % 二次編碼）
         $changed = false;
+        $rewritten_base = '';
         for ( $i = 1, $n = count( $segments ); $i < $n; $i++ ) {
             if ( '' === $segments[ $i ] ) {
                 continue;
@@ -653,14 +691,17 @@ class YSTPAddonsSlugTranslator {
             $hit = $map[ $segments[ $i ] ] ?? ( $map[ rawurldecode( $segments[ $i ] ) ] ?? null );
             if ( null !== $hit ) {
                 $segments[ $i ] = (string) $hit;
-                $changed        = true;
+                if ( $i === 1 && $n > 2 ) {
+                    $rewritten_base = (string) $hit;
+                }
+                $changed = true;
             }
         }
 
         if ( $changed ) {
             $new_path = '/' . ( '' !== $home_path ? $home_path . '/' : '' ) . implode( '/', $segments ) . '/';
             $query    = (string) wp_parse_url( $uri, PHP_URL_QUERY );
-            self::$translated_request = [ 'path' => $path, 'query' => $query, 'locale' => $locale ];
+            self::$translated_request = [ 'path' => $path, 'query' => $query, 'locale' => $locale, 'rewritten_base' => $rewritten_base ];
             $_SERVER['REQUEST_URI'] = $new_path . ( '' !== $query ? '?' . $query : '' );
             // WordPress 會再編碼 PATH_INFO 的百分比。若它只是原路徑的副本，改用已編碼的 REQUEST_URI。
             if ( isset( $_SERVER['PATH_INFO'] ) && rawurldecode( (string) $_SERVER['PATH_INFO'] ) === rawurldecode( $path ) ) {
