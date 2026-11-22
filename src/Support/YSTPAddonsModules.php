@@ -49,6 +49,20 @@ class YSTPAddonsModules {
                 'default' => true,
                 'phase'   => 1,
             ],
+            'translator_access' => [
+                'icon'    => 'dashicons-admin-users',
+                'page'    => 'ys-tp-translators',
+                'class'   => \YangSheep\TPAddons\Modules\TranslatorAccess\YSTPAddonsTranslatorAccess::class,
+                'default' => false,
+                'phase'   => 1,
+            ],
+            'google_glossary' => [
+                'icon'    => 'dashicons-book',
+                'page'    => 'ys-tp-glossary',
+                'class'   => \YangSheep\TPAddons\Modules\GoogleGlossary\YSTPAddonsGoogleGlossary::class,
+                'default' => false,
+                'phase'   => 2,
+            ],
             'auto_detect' => [
                 'icon'    => 'dashicons-location-alt',
                 'page'    => 'ys-tp-detect',
@@ -115,6 +129,14 @@ class YSTPAddonsModules {
             'language_switcher' => [
                 'label' => __( '語言切換器', 'ys-translatepress-addons' ),
                 'desc'  => __( '全新設計的語言切換短代碼：固定浮動、彈出視窗、下拉選單等多種樣式。', 'ys-translatepress-addons' ),
+            ],
+            'translator_access' => [
+                'label' => __( '翻譯者與角色預覽', 'ys-translatepress-addons' ),
+                'desc'  => __( '延續既有翻譯者權限，並讓管理員預覽常見前台角色。', 'ys-translatepress-addons' ),
+            ],
+            'google_glossary'   => [
+                'label' => __( 'Google 翻譯術語', 'ys-translatepress-addons' ),
+                'desc'  => __( '在 Google Translate v2 的新譯文中沿用 TranslatePress 術語表。', 'ys-translatepress-addons' ),
             ],
             'auto_detect'       => [
                 'label' => __( '語言自動偵測', 'ys-translatepress-addons' ),

@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name: YS TranslatePress Addons
+ * Plugin Name: YS TranslatePress Addons — Fleet
  * Plugin URI:  https://yangsheep.com.tw
  * Description: TranslatePress 多語言強化套件 — 解鎖語言數量、SEO、AI 翻譯（OpenAI／Gemini／Claude）、選單語言控制、語言自動偵測、語言切換器、內容語言規則與翻譯匯出匯入。
- * Version:     0.18.1
+ * Version:     0.19.0
  * Author:      YANGSHEEP DESIGN
  * Author URI:  https://yangsheep.com.tw
  * License:     GPL-2.0-or-later
@@ -21,18 +21,11 @@ defined( 'ABSPATH' ) || exit;
 /* ──────────────────────────────────────────────
  * 常數定義
  * ────────────────────────────────────────────── */
-define( 'YS_TP_VERSION', '0.18.1' );
+define( 'YS_TP_VERSION', '0.19.0' );
 define( 'YS_TP_PLUGIN_FILE', __FILE__ );
 define( 'YS_TP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YS_TP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'YS_TP_BASENAME', plugin_basename( __FILE__ ) );
-
-/* ──────────────────────────────────────────────
- * Vendor autoload（Hub Client）
- * ────────────────────────────────────────────── */
-if ( file_exists( YS_TP_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
-    require_once YS_TP_PLUGIN_DIR . 'vendor/autoload.php';
-}
 
 /* ──────────────────────────────────────────────
  * Fallback PSR-4 Autoloader
@@ -71,19 +64,17 @@ add_action( 'plugins_loaded', function () {
     }
 }, 2 );
 
-/* ──────────────────────────────────────────────
- * Hub Client 註冊（priority 5，比其他 hook 早）
- * ────────────────────────────────────────────── */
-add_action( 'plugins_loaded', function () {
-    if ( class_exists( '\YangSheep\PluginHubClient\YSPluginHubClient' ) ) {
-        \YangSheep\PluginHubClient\YSPluginHubClient::register( array(
-            'slug'        => 'ys-translatepress-addons',
-            'version'     => YS_TP_VERSION,
-            'plugin_file' => __FILE__,
-            'name'        => 'YS TranslatePress Addons',
-        ) );
+// 核心在初始化時需要這個權限篩選器，早於一般模組啟動。
+add_filter( 'trp_translating_capability', function ( string $capability ): string {
+    $pro = (array) get_option( 'trp_add_ons_settings', [] );
+    if ( ! \YangSheep\TPAddons\Support\YSTPAddonsModules::is_enabled( 'translator_access' )
+        || ( ! empty( $pro['tp-add-on-translator-accounts/index.php'] )
+            && ( in_array( 'translatepress-developer/index.php', (array) get_option( 'active_plugins', [] ), true )
+                || isset( get_site_option( 'active_sitewide_plugins', [] )['translatepress-developer/index.php'] ) ) ) ) {
+        return $capability;
     }
-}, 5 );
+    return \YangSheep\TPAddons\Modules\TranslatorAccess\YSTPAddonsTranslatorAccess::capability( $capability );
+} );
 
 /* ──────────────────────────────────────────────
  * Activation — 建立資料表

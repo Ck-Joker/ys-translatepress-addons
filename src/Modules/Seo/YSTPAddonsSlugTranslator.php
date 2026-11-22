@@ -34,6 +34,8 @@ class YSTPAddonsSlugTranslator {
     public const META_PREFIX = '_ys_tp_slug_';
 
     /** 對照表快取前綴 */
+    public const AUTO_SLUG_HOOK = 'ys_tp_translate_post_slug';
+
     private const CACHE_PREFIX = 'ys_tp_slugmap_';
 
     /**
@@ -50,6 +52,8 @@ class YSTPAddonsSlugTranslator {
     private static array $map_cache = [];
 
     public function boot(): void {
+        add_action( 'transition_post_status', [ $this, 'schedule_auto_slugs' ], 10, 3 );
+        add_action( self::AUTO_SLUG_HOOK, [ $this, 'translate_post_slugs' ] );
         if ( is_admin() ) {
             add_action( 'add_meta_boxes', [ $this, 'add_meta_box' ] );
             add_action( 'save_post', [ $this, 'save_meta' ], 10, 2 );
@@ -63,8 +67,95 @@ class YSTPAddonsSlugTranslator {
         } else {
             // Outbound：TranslatePress 產生語言 URL 時，把原始 slug 換成翻譯 slug
             add_filter( 'trp_get_url_for_language', [ $this, 'outbound_translate' ], 10, 3 );
+            add_filter( 'get_canonical_url', [ $this, 'canonical_url' ], 20 );
+            add_filter( 'wpseo_canonical', [ $this, 'canonical_url' ], 20 );
+            add_filter( 'rank_math/frontend/canonical', [ $this, 'canonical_url' ], 20 );
         }
         // Inbound 由主檔在 plugins_loaded priority 2（早於 TranslatePress）呼叫 run_inbound()
+    }
+
+    public function schedule_auto_slugs( string $status, string $old_status, \WP_Post $post ): void {
+        if ( $status !== 'publish' || $old_status === 'publish' || ! $this->auto_slug_enabled() ) {
+            return;
+        }
+        if ( ! is_post_type_viewable( get_post_type_object( $post->post_type ) ) || $post->post_type === 'attachment' || $post->post_password !== '' ) {
+            return;
+        }
+        $args = [ $post->ID ];
+        if ( ! wp_next_scheduled( self::AUTO_SLUG_HOOK, $args ) ) {
+            wp_schedule_single_event( time() + MINUTE_IN_SECONDS, self::AUTO_SLUG_HOOK, $args );
+        }
+    }
+
+    private function auto_slug_enabled(): bool {
+        $machine = (array) get_option( 'trp_machine_translation_settings', [] );
+        return ! class_exists( '\TRP_IN_Seo_Pack' )
+            && (int) YSTPAddonsSettingsRepo::get( 'seo_auto_slug_enabled', 0 ) === 1
+            && ( $machine['translation-engine'] ?? '' ) === 'google_translate_v2'
+            && ( $machine['machine-translation'] ?? '' ) === 'yes';
+    }
+
+    public function translate_post_slugs( int $post_id ): void {
+        global $wpdb;
+
+        $post = get_post( $post_id );
+        if ( ! $this->auto_slug_enabled() || ! $post || $post->post_status !== 'publish' || $post->post_password !== ''
+            || $post->post_type === 'attachment' || ! is_post_type_viewable( get_post_type_object( $post->post_type ) ) ) {
+            return;
+        }
+
+        $source = YSTPAddonsTP::default_language();
+        $translator = \TRP_Translate_Press::get_trp_instance()->get_component( 'machine_translator' );
+        if ( ! $translator || ! $translator->is_available() ) {
+            return;
+        }
+
+        // 同一次發布建立固定網址，之後重跑不覆蓋人工設定或既有網址。
+        $slug = $post->post_name;
+        $text = trim( str_replace( '-', ' ', rawurldecode( $slug ) ) );
+        if ( $text === '' ) {
+            return;
+        }
+
+        foreach ( YSTPAddonsTP::published_language_codes() as $locale ) {
+            $meta_key = self::META_PREFIX . $locale;
+            if ( $locale === $source || metadata_exists( 'post', $post_id, $meta_key ) || self::legacy_slug_for_original( $slug, $locale ) !== '' ) {
+                continue;
+            }
+
+            try {
+                $translations = $translator->translate( [ $text ], $locale, $source, 'ys_tp_slug' );
+            } finally {
+                if ( method_exists( $translator, 'release_locks' ) ) {
+                    $translator->release_locks();
+                }
+            }
+
+            $translated = sanitize_title( wp_strip_all_tags( (string) ( $translations[ $text ] ?? '' ) ) );
+            if ( $translated === '' || $translated === $slug ) {
+                continue;
+            }
+
+            $lock = 'ys_tp_slug_' . md5( $wpdb->prefix . $locale );
+            if ( (string) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 3)', $lock ) ) !== '1' ) {
+                continue;
+            }
+            try {
+                $current = $wpdb->get_row( $wpdb->prepare(
+                    "SELECT post_name, post_status, post_password FROM {$wpdb->posts} WHERE ID = %d",
+                    $post_id
+                ) );
+                if ( ! $current || $current->post_status !== 'publish' || $current->post_password !== '' || $current->post_name !== $slug ) {
+                    continue;
+                }
+                $translated = $this->make_unique( $translated, $locale, $post_id, 'post' );
+                if ( $translated !== '' && add_post_meta( $post_id, $meta_key, $translated, true ) ) {
+                    self::flush_map();
+                }
+            } finally {
+                $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock ) );
+            }
+        }
     }
 
     /**
@@ -216,6 +307,10 @@ class YSTPAddonsSlugTranslator {
             }
             if ( ! isset( $in[ $translated ] ) ) {
                 $in[ $translated ] = $original_raw;
+            }
+            $translated_decoded = rawurldecode( $translated );
+            if ( ! isset( $in[ $translated_decoded ] ) ) {
+                $in[ $translated_decoded ] = $original_raw;
             }
         };
 
@@ -427,7 +522,7 @@ class YSTPAddonsSlugTranslator {
             // 段落可能為資料庫原形（percent-encoded）或已解碼，兩種都比對
             $hit = $map[ $seg ] ?? ( $map[ rawurldecode( $seg ) ] ?? null );
             if ( null !== $hit ) {
-                $segments[ $i ] = rawurlencode( (string) $hit );
+                $segments[ $i ] = rawurlencode( rawurldecode( (string) $hit ) );
                 $changed        = true;
             }
         }
@@ -437,6 +532,22 @@ class YSTPAddonsSlugTranslator {
 
         $new_path = '/' . implode( '/', $segments ) . '/';
         return str_replace( $path, $new_path, $new_url );
+    }
+
+    public function canonical_url( $url ) {
+        $language = YSTPAddonsTP::current_language();
+        $home = wp_parse_url( (string) get_option( 'home' ) );
+        if ( ! is_string( $url ) || $language === YSTPAddonsTP::default_language() ) {
+            return $url;
+        }
+
+        $target = wp_parse_url( $url );
+        if ( empty( $target['host'] ) || ( $home['host'] ?? '' ) !== $target['host']
+            || ( $home['port'] ?? null ) !== ( $target['port'] ?? null ) ) {
+            return $url;
+        }
+
+        return YSTPAddonsTP::url_for_language( $language, $url );
     }
 
     /* ───────────── Inbound ───────────── */
@@ -455,9 +566,9 @@ class YSTPAddonsSlugTranslator {
         }
 
         // 去掉子目錄安裝的 home path
-        $home_path = trim( (string) wp_parse_url( home_url(), PHP_URL_PATH ), '/' );
+        $home_path = trim( (string) wp_parse_url( (string) get_option( 'home' ), PHP_URL_PATH ), '/' );
         $work      = trim( $path, '/' );
-        if ( '' !== $home_path && 0 === strpos( $work, $home_path ) ) {
+        if ( '' !== $home_path && ( $work === $home_path || str_starts_with( $work, $home_path . '/' ) ) ) {
             $work = trim( substr( $work, strlen( $home_path ) ), '/' );
         }
         if ( '' === $work ) {
@@ -500,6 +611,10 @@ class YSTPAddonsSlugTranslator {
             $new_path = '/' . ( '' !== $home_path ? $home_path . '/' : '' ) . implode( '/', $segments ) . '/';
             $query    = (string) wp_parse_url( $uri, PHP_URL_QUERY );
             $_SERVER['REQUEST_URI'] = $new_path . ( '' !== $query ? '?' . $query : '' );
+            // 部分 PHP runtime 另提供原始 PATH_INFO，WordPress 會優先用它比對規則。
+            if ( ( $_SERVER['PATH_INFO'] ?? '' ) === $path ) {
+                $_SERVER['PATH_INFO'] = $new_path;
+            }
         }
     }
 
@@ -555,7 +670,7 @@ class YSTPAddonsSlugTranslator {
             $candidate = $slug . '-' . $suffix;
             $suffix++;
         }
-        return $candidate;
+        return '';
     }
 
     /** 是否撞到分類／內容類型的原始基底 */
@@ -754,6 +869,9 @@ class YSTPAddonsSlugTranslator {
                 continue;
             }
             $unique = $this->make_unique( $raw, $code, $object_id, $kind );
+            if ( $unique === '' ) {
+                continue;
+            }
             'post' === $kind
                 ? update_post_meta( $object_id, $meta_key, $unique )
                 : update_term_meta( $object_id, $meta_key, $unique );

@@ -22,7 +22,7 @@ class YSTPAddonsAutoDetect implements YSTPAddonsModuleInterface {
     private const COOKIE = 'ys_tp_ald';
 
     public function boot(): void {
-        if ( is_admin() || is_robots() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+        if ( class_exists( '\TRP_IN_Automatic_Language_Detection' ) || is_admin() || is_robots() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
             return;
         }
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue' ] );
@@ -47,7 +47,18 @@ class YSTPAddonsAutoDetect implements YSTPAddonsModuleInterface {
     private function detection_data(): array {
         $published = YSTPAddonsTP::published_language_codes();
         $current   = YSTPAddonsTP::current_language();
-        $suggested = $this->detect_from_browser( $published );
+        $mode = self::detection_method();
+        if ( $mode === 'ip' || $mode === 'ip-browser' ) {
+            $suggested = $this->detect_from_country( $published );
+            if ( $suggested === null && $mode === 'ip-browser' ) {
+                $suggested = $this->detect_from_browser( $published );
+            }
+        } else {
+            $suggested = $this->detect_from_browser( $published );
+            if ( $suggested === null && $mode === 'browser-ip' ) {
+                $suggested = $this->detect_from_country( $published );
+            }
+        }
 
         $payload = [
             'cookie'   => self::COOKIE,
@@ -135,6 +146,49 @@ class YSTPAddonsAutoDetect implements YSTPAddonsModuleInterface {
         }
 
         return [ 'title' => $row[0], 'accept' => $row[1], 'dismiss' => $row[2] ];
+    }
+
+    public static function detection_method(): string {
+        $legacy = (array) get_option( 'trp_ald_settings', [] );
+        $mode = (string) YSTPAddonsSettingsRepo::get( 'detect_method', $legacy['detection-method'] ?? 'browser' );
+        return in_array( $mode, [ 'browser', 'browser-ip', 'ip-browser', 'ip' ], true ) ? $mode : 'browser';
+    }
+
+    private function detect_from_country( array $published ): ?string {
+        $address = $_SERVER['REMOTE_ADDR'] ?? '';
+        $country = '';
+
+        // 只有信任入口代理時才接受它提供的國碼，例如由 Cloudflare 管理且禁止直連的站。
+        if ( defined( 'YS_TP_TRUST_CF_IPCOUNTRY' ) && YS_TP_TRUST_CF_IPCOUNTRY ) {
+            $country = strtoupper( (string) ( $_SERVER['HTTP_CF_IPCOUNTRY'] ?? '' ) );
+        }
+        if ( $country === '' && class_exists( '\WC_Geolocation' ) && filter_var( $address, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+            // 只查 WooCommerce 的本機 GeoIP 資料庫，避免把訪客 IP 送往外部服務。
+            $location = \WC_Geolocation::geolocate_ip( $address, false, false );
+            $country = strtoupper( (string) ( $location['country'] ?? '' ) );
+        }
+
+        $country = strtoupper( (string) apply_filters( 'ys_tp_detect_country', $country ) );
+        if ( ! preg_match( '/^[A-Z]{2}$/D', $country ) || $country === 'XX' ) {
+            return null;
+        }
+
+        $default = YSTPAddonsTP::default_language();
+        $match = $this->country_language( $country, array_intersect( [ $default ], $published ) );
+        return $match ?? $this->country_language( $country, $published );
+    }
+
+    private function country_language( string $country, array $published ): ?string {
+        foreach ( $published as $locale ) {
+            // 郵遞區域碼直接對照 WordPress 語系，例如 TW → zh_TW。
+            if ( str_ends_with( strtoupper( $locale ), '_' . $country ) ) {
+                return $locale;
+            }
+        }
+        // ja、ko 這類沒有區域碼的語系用固定對照。
+        $languages = [ 'JP' => 'ja', 'KR' => 'ko', 'VN' => 'vi', 'TH' => 'th', 'ID' => 'id', 'PH' => 'tl' ];
+        $locale = $languages[ $country ] ?? null;
+        return in_array( $locale, $published, true ) ? $locale : null;
     }
 
     /**

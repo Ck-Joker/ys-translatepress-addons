@@ -185,6 +185,9 @@ if ( class_exists( $slug_cls ) && '' !== $rtax && class_exists( '\RankMath\Sitem
     $tid3 = is_wp_error( $tr3 ) ? 0 : (int) $tr3['term_id'];
     update_term_meta( $tid3, $slug_cls::META_PREFIX . $other, 'ys-test-slug' );
     $pid3 = wp_insert_post( [ 'post_title' => 'ys-test-slug-post', 'post_type' => $rpt, 'post_status' => 'publish' ] );
+    // 此案例驗證網址，明確公開兩語以免繼承其他案例需要的隱藏規則。
+    update_term_meta( $tid3, YSTPAddonsTermRules::META_MODE, 'all' );
+    update_post_meta( $pid3, YSTPAddonsContentRules::META_MODE, 'all' );
     wp_set_object_terms( $pid3, [ $tid3 ], $rtax );
     $slug_cls::flush_map();
     \RankMath\Sitemap\Cache::invalidate_storage();

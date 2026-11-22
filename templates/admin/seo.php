@@ -20,6 +20,7 @@ $region    = (int) YSTPAddonsSettingsRepo::get( 'seo_hreflang_region', 1 );
 $region_i  = (int) YSTPAddonsSettingsRepo::get( 'seo_hreflang_region_independent', 1 );
 $xd_on     = (int) YSTPAddonsSettingsRepo::get( 'seo_xdefault_enabled', 0 );
 $xd_lang   = (string) YSTPAddonsSettingsRepo::get( 'seo_xdefault_lang', YSTPAddonsTP::default_language() );
+$auto_slug = (int) YSTPAddonsSettingsRepo::get( 'seo_auto_slug_enabled', 0 );
 $slug_on   = (int) YSTPAddonsSettingsRepo::get( 'seo_slug_enabled', 0 );
 
 $langs = YSTPAddonsTP::languages();
@@ -126,6 +127,12 @@ $has_rankmath = class_exists( 'RankMath' );
                 <p class="ystp-field-desc">
                     <?php esc_html_e( '開啟後可為各語言設定自訂網址 slug，涵蓋：文章／頁面／自訂內容單頁（於編輯畫面設定）、分類項目（於分類編輯畫面設定），以及下方的網址基底。例如英文 /en/news-category/company-news/ 對應中文 /news-cat/新聞/。', 'ys-translatepress-addons' ); ?>
                 </p>
+            </div>
+
+            <div class="ystp-field">
+                <label for="ystp-auto-slug"><?php esc_html_e( '自動翻譯新發布內容的 slug', 'ys-translatepress-addons' ); ?></label>
+                <label class="ystp-toggle"><input id="ystp-auto-slug" type="checkbox" data-setting="seo_auto_slug_enabled" <?php checked( $auto_slug, 1 ); ?> /><span class="ystp-slider"></span></label>
+                <p class="ystp-field-desc"><?php esc_html_e( '使用 TranslatePress 的 Google Translate v2 與每日限額。啟用譯名網址與 Google 自動翻譯後，新發布的公開內容會在背景產生各語言 slug。既有 slug 可在內容編輯頁管理。', 'ys-translatepress-addons' ); ?></p>
             </div>
 
             <div class="ystp-field ystp-field-wide">

@@ -16,6 +16,7 @@ use YangSheep\TPAddons\Support\YSTPAddonsTP;
 use YangSheep\TPAddons\Support\YSTPAddonsModules;
 use YangSheep\TPAddons\Modules\AutoDetect\YSTPAddonsAutoDetect;
 
+$method    = YSTPAddonsAutoDetect::detection_method();
 $behavior  = (string) YSTPAddonsSettingsRepo::get( 'detect_behavior', 'prompt' );
 $style     = (string) YSTPAddonsSettingsRepo::get( 'detect_style', 'card' );
 $position  = (string) YSTPAddonsSettingsRepo::get( 'detect_position', 'bottom-right' );
@@ -97,6 +98,16 @@ if ( $demo ) {
         <div class="ystp-panel">
             <div class="ystp-panel-head"><span class="dashicons dashicons-admin-settings"></span> 設定</div>
             <div class="ystp-panel-body ystp-form" data-form="detect">
+                <div class="ystp-field">
+                    <label for="ystp-detect-method"><?php esc_html_e( '偵測來源', 'ys-translatepress-addons' ); ?></label>
+                    <select id="ystp-detect-method" data-setting="detect_method">
+                        <option value="browser" <?php selected( $method, 'browser' ); ?>><?php esc_html_e( '瀏覽器語言', 'ys-translatepress-addons' ); ?></option>
+                        <option value="browser-ip" <?php selected( $method, 'browser-ip' ); ?>><?php esc_html_e( '瀏覽器語言優先，IP 備援', 'ys-translatepress-addons' ); ?></option>
+                        <option value="ip-browser" <?php selected( $method, 'ip-browser' ); ?>><?php esc_html_e( 'IP 優先，瀏覽器語言備援', 'ys-translatepress-addons' ); ?></option>
+                        <option value="ip" <?php selected( $method, 'ip' ); ?>><?php esc_html_e( 'IP 所在國家或地區', 'ys-translatepress-addons' ); ?></option>
+                    </select>
+                    <p class="ystp-field-desc"><?php esc_html_e( 'IP 偵測需設定可信任的 Cloudflare 入口，或在站上安裝 WooCommerce 的本機地理資料庫。', 'ys-translatepress-addons' ); ?></p>
+                </div>
                 <div class="ystp-field">
                     <label><?php esc_html_e( '提示行為', 'ys-translatepress-addons' ); ?></label>
                     <select data-setting="detect_behavior">

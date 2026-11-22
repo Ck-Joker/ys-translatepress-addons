@@ -33,6 +33,8 @@ class YSTPAddonsMigration {
             YSTPAddonsSettingsRepo::set( 'seo_slug_enabled', 1 );
             $report['modules'][] = 'seo';
             $report['slug']      = self::migrate_slugs();
+            YSTPAddonsSlugTranslator::refresh_base_pairs();
+            YSTPAddonsSlugTranslator::flush_map();
         }
 
         // ── 選單語言 ──
@@ -92,7 +94,7 @@ class YSTPAddonsMigration {
         if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tt ) ) ) {
             // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             $rows = $wpdb->get_results(
-                "SELECT so.original AS original, st.translated AS translated, st.language AS lang
+                "SELECT so.original AS original, so.type AS type, st.translated AS translated, st.language AS lang
                  FROM `$tt` st INNER JOIN `$ot` so ON so.id = st.original_id
                  WHERE st.translated <> ''"
             );
@@ -101,8 +103,7 @@ class YSTPAddonsMigration {
                 if ( '' === $locale ) {
                     continue;
                 }
-                $pid = self::post_id_by_name( (string) $r->original );
-                if ( $pid && self::set_our_slug( $pid, $locale, (string) $r->translated ) ) {
+                if ( self::migrate_typed_slug( (string) $r->type, (string) $r->original, $locale, (string) $r->translated ) ) {
                     $count++;
                 }
             }
@@ -127,6 +128,40 @@ class YSTPAddonsMigration {
         return $count;
     }
 
+    private static function migrate_typed_slug( string $type, string $original, string $locale, string $translated ): bool {
+        global $wpdb;
+        if ( $type === 'post' ) {
+            $ids = $wpdb->get_col( $wpdb->prepare(
+                "SELECT ID FROM {$wpdb->posts} WHERE post_name = %s AND post_status IN ('publish','private') LIMIT 2",
+                $original
+            ) );
+            return count( $ids ) === 1 && self::set_our_slug( (int) $ids[0], $locale, $translated );
+        }
+        if ( $type === 'term' ) {
+            $ids = $wpdb->get_col( $wpdb->prepare( "SELECT term_id FROM {$wpdb->terms} WHERE slug = %s LIMIT 2", $original ) );
+            return count( $ids ) === 1 && self::set_our_slug( (int) $ids[0], $locale, $translated, 'term' );
+        }
+        if ( $type !== 'taxonomy' && $type !== 'post-type-base' ) {
+            return false; // 未分類資料保留在原表，由既有相容讀取處理。
+        }
+
+        $is_taxonomy = $type === 'taxonomy';
+        $objects = $is_taxonomy ? YSTPAddonsSlugTranslator::base_taxonomies() : YSTPAddonsSlugTranslator::base_post_types();
+        $matches = [];
+        foreach ( $objects as $object ) {
+            $base = $is_taxonomy ? YSTPAddonsSlugTranslator::taxonomy_base( $object ) : YSTPAddonsSlugTranslator::post_type_base( $object );
+            if ( rawurldecode( $base ) === rawurldecode( $original ) ) {
+                $matches[] = $object->name;
+            }
+        }
+        if ( count( $matches ) !== 1 ) {
+            return false;
+        }
+        $key = YSTPAddonsSlugTranslator::base_key( $is_taxonomy ? 'tax' : 'pt', $matches[0], $locale );
+        $clean = sanitize_title( $translated );
+        return $clean !== '' && YSTPAddonsSettingsRepo::get( $key, '' ) === '' && YSTPAddonsSettingsRepo::set( $key, $clean );
+    }
+
     /** 將 PRO 的 language（可能是 url-slug 或 locale）正規化為 locale */
     private static function normalize_locale( string $lang, array $slug2loc, array $valid ): string {
         if ( in_array( $lang, $valid, true ) ) {
@@ -139,25 +174,16 @@ class YSTPAddonsMigration {
     }
 
     /** 寫入本外掛 slug meta（僅在尚未設定時，避免覆蓋使用者既有設定） */
-    private static function set_our_slug( int $post_id, string $locale, string $translated ): bool {
+    private static function set_our_slug( int $object_id, string $locale, string $translated, string $kind = 'post' ): bool {
         $key = YSTPAddonsSlugTranslator::META_PREFIX . $locale;
-        if ( '' !== (string) get_post_meta( $post_id, $key, true ) ) {
+        if ( '' !== (string) get_metadata( $kind, $object_id, $key, true ) ) {
             return false; // 已有本外掛設定，不覆蓋
         }
         $clean = sanitize_title( $translated );
         if ( '' === $clean ) {
             return false;
         }
-        update_post_meta( $post_id, $key, $clean );
-        return true;
-    }
-
-    private static function post_id_by_name( string $name ): int {
-        global $wpdb;
-        return (int) $wpdb->get_var( $wpdb->prepare(
-            "SELECT ID FROM {$wpdb->posts} WHERE post_name = %s AND post_status IN ('publish','private') LIMIT 1",
-            $name
-        ) );
+        return (bool) add_metadata( $kind, $object_id, $key, $clean, true );
     }
 
     /* ───────────── 遷移選單語言 ───────────── */

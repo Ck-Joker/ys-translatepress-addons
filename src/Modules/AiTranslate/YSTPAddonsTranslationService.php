@@ -3,7 +3,7 @@
  * AI 翻譯核心服務
  *
  * 從 TranslatePress 的 dictionary／gettext 資料表讀取未翻譯字串（status=0），
- * 透過 AI 供應商批次翻譯後寫回（translated + status=2 機器翻譯）。
+ * 透過 AI 供應商批次翻譯後寫回（translated + status=1 機器翻譯）。
  *
  * @package YangSheep\TPAddons\Modules\AiTranslate
  * @since   0.3.0
@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
 class YSTPAddonsTranslationService {
 
     /** TP 狀態：機器翻譯 */
-    private const STATUS_MACHINE = 2;
+    private const STATUS_MACHINE = 1;
 
     /**
      * 目標語言（已發佈、排除預設語言）
@@ -136,14 +136,16 @@ class YSTPAddonsTranslationService {
                     continue;
                 }
                 // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-                $wpdb->update(
+                $updated = $wpdb->update(
                     $table,
                     [ 'translated' => $tr, 'status' => self::STATUS_MACHINE ],
-                    [ 'id' => (int) $row->id ],
+                    [ 'id' => (int) $row->id, 'status' => 0 ],
                     [ '%s', '%d' ],
-                    [ '%d' ]
+                    [ '%d', '%d' ]
                 );
-                $translated++;
+                if ( $updated === 1 ) {
+                    $translated++;
+                }
             }
         }
 
@@ -168,10 +170,9 @@ class YSTPAddonsTranslationService {
         }
         foreach ( self::target_languages() as $target ) {
             $turl = YSTPAddonsTP::url_for_language( $target, $url );
-            wp_remote_get( $turl, [
+            wp_safe_remote_get( $turl, [
                 'timeout'   => 20,
                 'blocking'  => true,
-                'sslverify' => false,
                 'headers'   => [ 'X-YS-TP-Discover' => '1' ],
             ] );
         }
