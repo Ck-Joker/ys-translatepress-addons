@@ -73,6 +73,10 @@ class YSTPAddonsPlugin {
     private function maybe_upgrade_schema(): void {
         $current = get_option( 'ys_tp_schema_version', '0' );
         if ( version_compare( $current, YS_TP_VERSION, '<' ) ) {
+            if ( version_compare( $current, '0.24.0', '<' ) ) {
+                wp_unschedule_hook( 'ys_tp_ai_translate_cron' );
+                wp_unschedule_hook( 'ys_tp_ai_auto_post' );
+            }
             YSTPAddonsTableMaker::create_tables();
             update_option( 'ys_tp_schema_version', YS_TP_VERSION );
         }

@@ -11,13 +11,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
-use YangSheep\TPAddons\Modules\AiTranslate\YSTPAddonsTranslationService;
 
 $export_base = add_query_arg(
     [ 'action' => 'ys_tp_io_export', 'nonce' => wp_create_nonce( 'ys_tp_io' ) ],
     admin_url( 'admin-ajax.php' )
 );
-$stats = YSTPAddonsTranslationService::stats();
+$stats = YSTPAddonsTP::stats();
 ?>
 <div class="wrap ystp-wrap">
     <h1 class="ystp-screen-reader">翻譯匯出／匯入</h1>

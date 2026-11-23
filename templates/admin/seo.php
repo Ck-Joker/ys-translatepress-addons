@@ -70,7 +70,7 @@ $has_rankmath = class_exists( 'RankMath' );
             </div>
             <div class="ystp-note ystp-note-warn" style="margin:6px 0 14px;">
                 <span class="dashicons dashicons-info-outline"></span>
-                <?php esc_html_e( '翻譯方式：到 TranslatePress 的「翻譯編輯器」開啟任一頁面，即可在 <head> 中繼資料逐語言翻譯；或於前台瀏覽各頁讓字串被偵測後，到「字串翻譯」清單翻譯，也可用「AI 翻譯」模組一併處理。', 'ys-translatepress-addons' ); ?>
+                <?php esc_html_e( '翻譯方式：到 TranslatePress 的「翻譯編輯器」開啟任一頁面，即可在 <head> 中繼資料逐語言翻譯；或於前台瀏覽各頁讓字串被偵測後，到「字串翻譯」清單翻譯。', 'ys-translatepress-addons' ); ?>
             </div>
             <div class="ystp-form-foot">
                 <button type="button" class="ystp-btn ystp-btn-primary ystp-save-btn" data-form="seo-meta">

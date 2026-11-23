@@ -10,11 +10,19 @@ final class YSTPAddonsMacAdmin {
 
     public const PAGE = 'ys-tp-mac-translation';
     public const CAPABILITY = 'ys_tp_manage_mac_translation';
+    public const MODULE = 'mac_translation';
     private const ACTION = 'ys_tp_save_mac_schedule';
+    private const LEGACY_PAGE = 'ys-tp-ai';
 
     public function boot(): void {
         add_filter( 'map_meta_cap', [ $this, 'map_capability' ], 10, 3 );
         add_action( 'admin_post_' . self::ACTION, [ $this, 'save' ] );
+    }
+
+    public function redirect_old_page(): void {
+        $this->require_admin();
+        wp_safe_redirect( admin_url( 'admin.php?page=' . self::PAGE ) );
+        exit;
     }
 
     public function map_capability( array $caps, string $cap, int $user_id ): array {
@@ -29,14 +37,19 @@ final class YSTPAddonsMacAdmin {
     }
 
     public function register_menu(): void {
+        $label = __( 'Mac ChatGPT 翻譯', 'ys-translatepress-addons' );
         add_submenu_page(
             YSTPAddonsAdmin::MENU_SLUG,
-            __( 'Mac ChatGPT 翻譯', 'ys-translatepress-addons' ),
-            __( 'Mac ChatGPT 翻譯', 'ys-translatepress-addons' ),
+            $label,
+            $label,
             self::CAPABILITY,
             self::PAGE,
             [ $this, 'render' ]
         );
+        $legacy = add_submenu_page( '', $label, $label, self::CAPABILITY, self::LEGACY_PAGE, [ $this, 'redirect_old_page' ] );
+        if ( $legacy ) {
+            add_action( 'load-' . $legacy, [ $this, 'redirect_old_page' ] );
+        }
     }
 
     public function render(): void {

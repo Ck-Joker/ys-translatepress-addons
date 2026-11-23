@@ -13,7 +13,6 @@ defined( 'ABSPATH' ) || exit;
 
 use YangSheep\TPAddons\Database\YSTPAddonsSettingsRepo;
 use YangSheep\TPAddons\Support\YSTPAddonsTP;
-use YangSheep\TPAddons\Support\YSTPAddonsModules;
 use YangSheep\TPAddons\Modules\AutoDetect\YSTPAddonsAutoDetect;
 
 $method    = YSTPAddonsAutoDetect::detection_method();
@@ -21,9 +20,8 @@ $behavior  = (string) YSTPAddonsSettingsRepo::get( 'detect_behavior', 'prompt' )
 $style     = (string) YSTPAddonsSettingsRepo::get( 'detect_style', 'card' );
 $position  = (string) YSTPAddonsSettingsRepo::get( 'detect_position', 'bottom-right' );
 $custom_on = (int) YSTPAddonsSettingsRepo::get( 'detect_msg_custom', 0 );
-$ai_on     = YSTPAddonsModules::is_enabled( 'ai_translate' );
 
-// 已發佈語言：預設（主要）語言排最前，作為 AI 翻譯來源
+// 已發佈語言：預設（主要）語言排最前
 $pub_codes = YSTPAddonsTP::published_language_codes();
 $def_code  = YSTPAddonsTP::default_language();
 $ordered   = array_merge( [ $def_code ], array_values( array_diff( $pub_codes, [ $def_code ] ) ) );
@@ -141,28 +139,6 @@ if ( $demo ) {
                 </div>
 
                 <div class="ystp-detect-manual" style="<?php echo $custom_on ? '' : 'display:none;'; ?>">
-                    <?php if ( $ai_on ) : ?>
-                        <div class="ystp-detect-ai-bar">
-                            <span class="ystp-field-desc" style="margin:0;flex:1;">
-                                <?php esc_html_e( '填好下方「主要來源語言」後，可一鍵 AI 翻譯到其他語言（結果會填入欄位，確認後再儲存）。', 'ys-translatepress-addons' ); ?>
-                            </span>
-                            <button type="button" class="ystp-btn ystp-detect-ai-translate" data-source="<?php echo esc_attr( $def_code ); ?>">
-                                <span class="dashicons dashicons-superhero"></span> <?php esc_html_e( 'AI 翻譯到其他語言', 'ys-translatepress-addons' ); ?>
-                            </button>
-                        </div>
-                    <?php else : ?>
-                        <p class="ystp-field-desc ystp-detect-ai-hint">
-                            <span class="dashicons dashicons-info-outline"></span>
-                            <?php
-                            printf(
-                                /* translators: %s: 「AI 翻譯」模組連結 */
-                                esc_html__( '啟用 %s 模組後，可一鍵將主要語言的文字翻譯到其他語言。', 'ys-translatepress-addons' ),
-                                '<a href="' . esc_url( admin_url( 'admin.php?page=ys-tp-ai' ) ) . '">' . esc_html__( 'AI 翻譯', 'ys-translatepress-addons' ) . '</a>'
-                            );
-                            ?>
-                        </p>
-                    <?php endif; ?>
-
                     <?php foreach ( $lang_rows as $r ) : ?>
                         <div class="ystp-detect-lang<?php echo $r['is_source'] ? ' is-source' : ''; ?>" data-lang="<?php echo esc_attr( $r['slug'] ); ?>" data-code="<?php echo esc_attr( $r['code'] ); ?>">
                             <div class="ystp-detect-lang-head">

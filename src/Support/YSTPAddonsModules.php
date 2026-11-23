@@ -91,13 +91,6 @@ class YSTPAddonsModules {
                 'default' => false,
                 'phase'   => 1,
             ],
-            'ai_translate' => [
-                'icon'    => 'dashicons-superhero',
-                'page'    => 'ys-tp-ai',
-                'class'   => \YangSheep\TPAddons\Modules\AiTranslate\YSTPAddonsAiTranslate::class,
-                'default' => false,
-                'phase'   => 2,
-            ],
             'seo' => [
                 'icon'    => 'dashicons-search',
                 'page'    => 'ys-tp-seo',
@@ -153,10 +146,6 @@ class YSTPAddonsModules {
             'language_fonts'    => [
                 'label' => __( '逐語言字型', 'ys-translatepress-addons' ),
                 'desc'  => __( '為每個語言指定不同字型，解決 CJK 字型在其他語系下標點過大等顯示問題。', 'ys-translatepress-addons' ),
-            ],
-            'ai_translate'      => [
-                'label' => __( 'AI 翻譯', 'ys-translatepress-addons' ),
-                'desc'  => __( '支援 OpenAI／Gemini／Claude，提供自動、手動逐頁、全站與排程背景翻譯。', 'ys-translatepress-addons' ),
             ],
             'seo'               => [
                 'label' => __( 'SEO 增強', 'ys-translatepress-addons' ),

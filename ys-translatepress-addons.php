@@ -2,8 +2,8 @@
 /**
  * Plugin Name: YS TranslatePress Addons — Fleet
  * Plugin URI:  https://yangsheep.com.tw
- * Description: TranslatePress 多語言強化套件 — 解鎖語言數量、SEO、AI 翻譯（OpenAI／Gemini／Claude）、選單語言控制、語言自動偵測、語言切換器、內容語言規則與翻譯匯出匯入。
- * Version:     0.23.3
+ * Description: TranslatePress 多語言強化套件，支援 Mac ChatGPT 翻譯、SEO、語言切換、語言偵測、選單與內容語言控制及翻譯匯出匯入。
+ * Version:     0.24.0
  * Author:      YANGSHEEP DESIGN
  * Author URI:  https://yangsheep.com.tw
  * License:     GPL-2.0-or-later
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /* ──────────────────────────────────────────────
  * 常數定義
  * ────────────────────────────────────────────── */
-define( 'YS_TP_VERSION', '0.23.3' );
+define( 'YS_TP_VERSION', '0.24.0' );
 define( 'YS_TP_PLUGIN_FILE', __FILE__ );
 define( 'YS_TP_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YS_TP_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -87,9 +87,6 @@ register_activation_hook( __FILE__, function () {
  * Deactivation — 清除背景排程
  * ────────────────────────────────────────────── */
 register_deactivation_hook( __FILE__, function () {
-    if ( class_exists( '\YangSheep\TPAddons\Modules\AiTranslate\YSTPAddonsCron' ) ) {
-        \YangSheep\TPAddons\Modules\AiTranslate\YSTPAddonsCron::clear();
-    }
 } );
 
 /* ──────────────────────────────────────────────
@@ -122,6 +119,9 @@ add_action( 'plugins_loaded', function () {
     if ( defined( 'YS_TP_MAC_RELAY' ) && YS_TP_MAC_RELAY === true ) {
         add_action( 'template_redirect', [ \YangSheep\TPAddons\Modules\MacTranslation\YSTPAddonsMacSchedule::class, 'enqueue_public_visit' ], 90 );
         add_action( 'transition_post_status', [ \YangSheep\TPAddons\Modules\MacTranslation\YSTPAddonsMacSchedule::class, 'enqueue_published_post' ], 10, 3 );
+        if ( defined( 'YS_TP_MAC_UPDATE_PAGES' ) && YS_TP_MAC_UPDATE_PAGES === true ) {
+            add_action( 'wp_after_insert_post', [ \YangSheep\TPAddons\Modules\MacTranslation\YSTPAddonsMacSchedule::class, 'enqueue_updated_post' ], 10, 4 );
+        }
     }
     if ( defined( 'YS_TP_MAC_GATE_LOCALES' ) && YS_TP_MAC_GATE_LOCALES ) {
         \YangSheep\TPAddons\Modules\MacTranslation\YSTPAddonsMacRelease::boot();

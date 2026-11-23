@@ -99,11 +99,22 @@ class YSTPAddonsTP {
         return is_array( $codes ) ? array_values( $codes ) : [];
     }
 
-    /**
-     * 已發佈語言（code => 顯示名稱）
-     *
-     * @return array<string, string>
-     */
+    /** @return string[] 已發佈的目標語言 */
+    public static function target_languages(): array {
+        return array_values( array_diff( self::published_language_codes(), [ self::default_language() ] ) );
+    }
+
+    public static function dictionary_table( string $source, string $target ): string {
+        global $wpdb;
+        return $wpdb->prefix . 'trp_dictionary_' . strtolower( $source ) . '_' . strtolower( $target );
+    }
+
+    public static function gettext_table( string $target ): string {
+        global $wpdb;
+        return $wpdb->prefix . 'trp_gettext_' . strtolower( $target );
+    }
+
+    /** @return array<string, string> 已發佈語言與顯示名稱 */
     public static function languages(): array {
         $codes = self::published_language_codes();
         if ( empty( $codes ) ) {

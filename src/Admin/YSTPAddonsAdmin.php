@@ -11,6 +11,7 @@
 namespace YangSheep\TPAddons\Admin;
 
 use YangSheep\TPAddons\Support\YSTPAddonsModules;
+use YangSheep\TPAddons\Modules\MacTranslation\YSTPAddonsMacSchedule as MacSchedule;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -154,6 +155,17 @@ class YSTPAddonsAdmin {
         }
         $modules = YSTPAddonsModules::all();
         $status  = YSTPAddonsModules::status();
+        if ( current_user_can( YSTPAddonsMacAdmin::CAPABILITY ) ) {
+            $modules[ YSTPAddonsMacAdmin::MODULE ] = [
+                'class' => YSTPAddonsMacAdmin::class,
+                'page'  => YSTPAddonsMacAdmin::PAGE,
+                'icon'  => 'dashicons-translation',
+                'label' => __( 'Mac ChatGPT 翻譯', 'ys-translatepress-addons' ),
+                'desc'  => __( '由 Mac 自動翻譯公開頁面，可設定掃描間隔與自動寫回。', 'ys-translatepress-addons' ),
+            ];
+            $status[ YSTPAddonsMacAdmin::MODULE ] = MacSchedule::settings()['enabled'];
+            $mac_ready = MacSchedule::ready();
+        }
         $template = YS_TP_PLUGIN_DIR . 'templates/admin/overview.php';
         if ( file_exists( $template ) ) {
             include $template;

@@ -282,6 +282,11 @@
 .ystp-mac .ystp-mac-header h1 { font-size: 25px; font-weight: 600; margin: 0 0 8px; }
 .ystp-mac .ystp-mac-header p { color: var(--ystp-muted); margin: 0; }
 .ystp-mac .ystp-mac-grid { align-items: start; }
+.ystp-mac .ystp-mac-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-weight: 600; }
+.ystp-card[data-module="mac_translation"] .ystp-toggle input:checked + .ystp-slider,
+.ystp-mac .ystp-toggle input:checked + .ystp-slider { background: #0a6eb1; }
+.ystp-card[data-module="mac_translation"] .ystp-toggle input:focus-visible + .ystp-slider,
+.ystp-mac .ystp-toggle input:focus-visible + .ystp-slider { outline: 2px solid #0a6eb1; outline-offset: 3px; }
 .ystp-mac .ystp-mac-field { display: grid; gap: 8px; margin-block: 16px; }
 .ystp-mac .ystp-mac-field label { font-weight: 600; }
 .ystp-mac .ystp-mac-field select { width: min(100%, 220px); }

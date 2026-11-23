@@ -2,7 +2,7 @@
 
 TranslatePress 免費版的增強套件 — 由 YANGSHEEP DESIGN 開發與維護。
 
-搭配 [TranslatePress Multilingual](https://wordpress.org/plugins/translatepress-multilingual/) 使用，為多語網站提供解鎖語言數量、AI 翻譯、SEO、語言切換器、語言偵測、選單與內容語言控制、翻譯匯出匯入等強化功能。
+搭配 [TranslatePress Multilingual](https://wordpress.org/plugins/translatepress-multilingual/) 使用，為多語網站提供解鎖語言數量、Mac ChatGPT 翻譯、SEO、語言切換器、語言偵測、選單與內容語言控制、翻譯匯出匯入等強化功能。
 
 ## Fleet fork
 
@@ -21,8 +21,7 @@ TranslatePress 免費版的增強套件 — 由 YANGSHEEP DESIGN 開發與維護
 | 語言自動偵測 | 依瀏覽器語言／IP 自動建議語言，重新設計的精緻提示介面 |
 | 選單語言控制 | 針對每個選單項目設定在哪些語言顯示或隱藏 |
 | 內容語言規則 | 頁面／文章／自訂內容可排除或指定語言顯示，並可設定切換語言時的智慧重導 |
-| Mac ChatGPT 翻譯 | 管理員可設定公開頁面翻譯排程。Mac 透過受限 SSH 領取工作，並將完成的譯文保留在 Mac 審核。 |
-| AI 翻譯 | 支援 OpenAI／Gemini／Claude，提供自動、手動逐頁、全站與排程背景翻譯 |
+| Mac ChatGPT 翻譯 | 管理員可設定公開頁面翻譯排程與自動寫回。Mac 透過受限 SSH 領取工作，站台也可啟用在已上線頁面儲存時補譯。 |
 | SEO 增強 | 翻譯網址 slug、hreflang 與多語 sitemap（相容 Yoast／RankMath） |
 | 翻譯匯出／匯入 | 全站或單頁匯出翻譯文字，外部編修後再匯入 |
 
@@ -35,11 +34,11 @@ TranslatePress 免費版的增強套件 — 由 YANGSHEEP DESIGN 開發與維護
 - TranslatePress Multilingual（免費版）已安裝並啟用
 - 已設定為「漂亮的永久連結」（Pretty Permalinks）
 
-## 隱私說明
+## Mac ChatGPT 翻譯
 
-- AI 翻譯模組需填入第三方（OpenAI／Gemini／Claude）API 金鑰，金鑰僅儲存於本站資料庫。
-- 翻譯時會將「待翻譯的網站文字」傳送至你所選的 AI 供應商，請依各供應商的資料政策評估。
-- 本外掛不蒐集、不外傳任何網站資料至 YANGSHEEP 以外的服務。
+- 維運人員先設定受限 SSH 與 Mac 排程。管理員可在「多語增強」總覽啟用或暫停，並在設定頁調整掃描間隔及自動寫回。
+- 使用支援頁面補譯的站端程式和 Mac 排程時，可透過站台設定 `YS_TP_MAC_UPDATE_PAGES` 啟用已開放語言的更新補譯。
+- 翻譯僅處理公開頁面，Mac 會把符合條件的待譯文字交給 ChatGPT。
 
 ## 開發者
 

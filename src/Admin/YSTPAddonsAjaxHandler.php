@@ -13,6 +13,7 @@ namespace YangSheep\TPAddons\Admin;
 
 use YangSheep\TPAddons\Database\YSTPAddonsSettingsRepo;
 use YangSheep\TPAddons\Support\YSTPAddonsModules;
+use YangSheep\TPAddons\Modules\MacTranslation\YSTPAddonsMacSchedule;
 use YangSheep\TPAddons\Support\YSTPAddonsMigration;
 use YangSheep\TPAddons\Support\YSTPAddonsCompat;
 
@@ -66,24 +67,15 @@ class YSTPAddonsAjaxHandler {
             wp_send_json_error( [ 'message' => __( '沒有收到設定資料', 'ys-translatepress-addons' ) ] );
         }
 
-        // 多行欄位（保留換行）
-        $multiline = [ 'ai_prompt' ];
-
         $saved_keys = [];
         foreach ( $raw as $key => $value ) {
             $safe_key = sanitize_key( $key );
-            if ( '' === $safe_key ) {
-                continue;
-            }
-            // API 金鑰留空表示「保留既有」，不覆寫
-            if ( 0 === strpos( $safe_key, 'ai_key_' ) && ( ! is_string( $value ) || '' === trim( $value ) ) ) {
+            if ( '' === $safe_key || str_starts_with( $safe_key, 'ai_' ) ) {
                 continue;
             }
 
             if ( is_array( $value ) ) {
                 $clean = $this->clean( $value );
-            } elseif ( in_array( $safe_key, $multiline, true ) ) {
-                $clean = sanitize_textarea_field( (string) $value );
             } else {
                 $clean = sanitize_text_field( (string) $value );
             }
@@ -111,18 +103,24 @@ class YSTPAddonsAjaxHandler {
         $module  = isset( $_POST['module'] ) ? sanitize_key( wp_unslash( $_POST['module'] ) ) : '';
         $enabled = isset( $_POST['enabled'] ) ? (bool) absint( $_POST['enabled'] ) : false;
 
+        if ( $module === YSTPAddonsMacAdmin::MODULE ) {
+            if ( ! current_user_can( YSTPAddonsMacAdmin::CAPABILITY ) ) {
+                wp_send_json_error( [ 'message' => __( '只有網站管理員可以操作 Mac 翻譯。', 'ys-translatepress-addons' ) ], 403 );
+            }
+            $settings = YSTPAddonsMacSchedule::settings();
+            if ( ! YSTPAddonsMacSchedule::save( $enabled, $settings['minutes'], $settings['auto_write'] ) ) {
+                wp_send_json_error( [ 'message' => __( '無法更新 Mac 翻譯設定。請到設定頁檢查連線與翻譯引擎。', 'ys-translatepress-addons' ) ] );
+            }
+            wp_send_json_success( [ 'message' => $enabled
+                ? __( 'Mac ChatGPT 翻譯已啟用', 'ys-translatepress-addons' )
+                : __( 'Mac ChatGPT 翻譯已暫停', 'ys-translatepress-addons' ) ] );
+        }
         $meta = YSTPAddonsModules::get( $module );
         if ( ! $meta ) {
             wp_send_json_error( [ 'message' => __( '未知的模組', 'ys-translatepress-addons' ) ] );
         }
 
         YSTPAddonsModules::set_status( $module, $enabled );
-
-        // 停用 AI 翻譯模組時清除背景排程
-        if ( 'ai_translate' === $module && ! $enabled
-            && class_exists( '\YangSheep\TPAddons\Modules\AiTranslate\YSTPAddonsCron' ) ) {
-            \YangSheep\TPAddons\Modules\AiTranslate\YSTPAddonsCron::clear();
-        }
 
         wp_send_json_success( [
             'message' => $enabled

@@ -12,7 +12,6 @@ namespace YangSheep\TPAddons\Modules\ImportExport;
 
 use YangSheep\TPAddons\Modules\YSTPAddonsModuleInterface;
 use YangSheep\TPAddons\Support\YSTPAddonsTP;
-use YangSheep\TPAddons\Modules\AiTranslate\YSTPAddonsTranslationService;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -63,11 +62,11 @@ class YSTPAddonsImportExport implements YSTPAddonsModuleInterface {
             'languages'    => [],
         ];
 
-        foreach ( YSTPAddonsTranslationService::target_languages() as $target ) {
+        foreach ( YSTPAddonsTP::target_languages() as $target ) {
             $cond = $only_translated ? " AND status <> 0 AND translated <> ''" : '';
 
-            $dict_table = YSTPAddonsTranslationService::dictionary_table( $source, $target );
-            $gx_table   = YSTPAddonsTranslationService::gettext_table( $target );
+            $dict_table = YSTPAddonsTP::dictionary_table( $source, $target );
+            $gx_table   = YSTPAddonsTP::gettext_table( $target );
 
             $dictionary = [];
             // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
@@ -148,8 +147,8 @@ class YSTPAddonsImportExport implements YSTPAddonsModuleInterface {
             }
 
             $map = [
-                'dictionary' => YSTPAddonsTranslationService::dictionary_table( $source, $target ),
-                'gettext'    => YSTPAddonsTranslationService::gettext_table( $target ),
+                'dictionary' => YSTPAddonsTP::dictionary_table( $source, $target ),
+                'gettext'    => YSTPAddonsTP::gettext_table( $target ),
             ];
 
             foreach ( $map as $kind => $table ) {

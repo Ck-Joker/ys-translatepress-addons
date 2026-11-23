@@ -10,6 +10,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
+use YangSheep\TPAddons\Admin\YSTPAddonsMacAdmin;
 use YangSheep\TPAddons\Support\YSTPAddonsTP;
 
 $tp_langs   = YSTPAddonsTP::languages();
@@ -58,9 +59,6 @@ $impl_count    = count( array_filter( $modules, static fn( $m ) => ! empty( $m['
         </div>
     </div>
 
-    <?php if ( current_user_can( \YangSheep\TPAddons\Admin\YSTPAddonsMacAdmin::CAPABILITY ) ) : ?>
-        <p><a class="ystp-btn" href="<?php echo esc_url( admin_url( 'admin.php?page=' . \YangSheep\TPAddons\Admin\YSTPAddonsMacAdmin::PAGE ) ); ?>"><?php esc_html_e( '管理 Mac ChatGPT 翻譯排程', 'ys-translatepress-addons' ); ?></a></p>
-    <?php endif; ?>
     <h2 class="ystp-section-title">功能模組</h2>
     <p class="ystp-section-desc">開啟需要的功能；每個模組可獨立啟用或停用。標示「即將推出」者將於後續版本提供。</p>
 
@@ -68,15 +66,17 @@ $impl_count    = count( array_filter( $modules, static fn( $m ) => ! empty( $m['
         <?php foreach ( $modules as $key => $meta ) :
             $is_impl = ! empty( $meta['class'] );
             $is_on   = ! empty( $status[ $key ] );
+            $is_mac  = $key === YSTPAddonsMacAdmin::MODULE;
             ?>
             <div class="ystp-card<?php echo $is_on ? ' is-on' : ''; ?><?php echo $is_impl ? '' : ' is-soon'; ?>" data-module="<?php echo esc_attr( $key ); ?>">
                 <div class="ystp-card-head">
                     <span class="ystp-card-icon dashicons <?php echo esc_attr( $meta['icon'] ); ?>"></span>
                     <label class="ystp-toggle">
-                        <input type="checkbox" class="ystp-module-toggle"
+                        <input type="checkbox" role="switch" class="ystp-module-toggle"
+                            aria-label="<?php echo esc_attr( $meta['label'] ); ?>"
                             data-module="<?php echo esc_attr( $key ); ?>"
                             <?php checked( $is_on ); ?>
-                            <?php disabled( ! $is_impl ); ?> />
+                            <?php disabled( ! $is_impl || ( $is_mac && ! $mac_ready && ! $is_on ) ); ?> />
                         <span class="ystp-slider"></span>
                     </label>
                 </div>
@@ -90,7 +90,11 @@ $impl_count    = count( array_filter( $modules, static fn( $m ) => ! empty( $m['
                     <?php else : ?>
                         <span class="ystp-badge-soon">即將推出</span>
                     <?php endif; ?>
-                    <span class="ystp-phase">Phase <?php echo esc_html( (string) $meta['phase'] ); ?></span>
+                    <?php if ( $is_mac && ! $mac_ready ) : ?>
+                        <span class="ystp-phase"><?php esc_html_e( '尚未就緒', 'ys-translatepress-addons' ); ?></span>
+                    <?php elseif ( isset( $meta['phase'] ) ) : ?>
+                        <span class="ystp-phase">Phase <?php echo esc_html( (string) $meta['phase'] ); ?></span>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>
